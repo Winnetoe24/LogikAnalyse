@@ -16,6 +16,8 @@ jobs:
 
     runs-on: ${{ matrix.platform }}
     steps:
+    - name: cd ./logik_analyse_gui
+      run: cd ./logik_analyse_gui
     - uses: actions/checkout@v2
     - name: setup node
       uses: actions/setup-node@v1
