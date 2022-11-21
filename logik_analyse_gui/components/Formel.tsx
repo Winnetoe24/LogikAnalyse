@@ -1,4 +1,4 @@
-import { Button, Checkbox, Grid, TextField } from '@mui/material';
+import {Button, Checkbox, Grid, Switch, TextField} from '@mui/material';
 import { ChangeEvent, FunctionComponent, useState } from 'react';
 
 import { invoke } from '@tauri-apps/api/tauri';
@@ -30,6 +30,7 @@ function Formel(props: any) {
   const [isFormelOk, setFormelOk] = useState(false);
   const [isFormelWrong, setFormelWrong] = useState(false);
   const [isChecked, setChecked] = useState(false);
+  const [isUTF, setUTF] = useState(true);
 
 
   const handleButton = () => {
@@ -48,6 +49,9 @@ function Formel(props: any) {
           console.error(formel);
         })
   }
+    const handleUTF = (event: any) => {
+      setUTF(!isUTF);
+  }
 
   const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     setFormelOk(false);
@@ -56,7 +60,7 @@ function Formel(props: any) {
     setValue(event.target.value);
   }
 
-  const handleChecked = (event: ChangeEvent) => {
+  const handleChecked = (event: ChangeEvent) => { 
     setChecked(!isChecked);
   }
 
@@ -71,6 +75,7 @@ function Formel(props: any) {
             onChange={handleChange}
           />
           <Button className='renderFormel' onClick={handleButton}>getFormel</Button>
+            <Switch checked={isUTF} onClick={handleUTF}></Switch>
         </Grid>
         {
           isFormelOk &&
