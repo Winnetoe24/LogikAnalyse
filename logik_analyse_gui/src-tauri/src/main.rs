@@ -12,11 +12,11 @@ use std::{
 use lazy_static::lazy_static;
 use serde_json::Map;
 use tauri::utils::resources::ResourcePaths;
+use LogikLib::aussagen;
 use LogikLib::aussagen::{
     parseFunktion,
     structures::{AussagenFunktion, Wahrheitstabelle},
 };
-use LogikLib::aussagen;
 struct MyState {
     vector: Vec<Mapping>,
 }
@@ -54,7 +54,13 @@ fn main() {
     let mut state = MyState { vector: Vec::new() };
     tauri::Builder::default()
         .manage(Mutex::from(state))
-        .invoke_handler(tauri::generate_handler![greet, renderFormel, get_wahrheitstabelle_cmd, getFormel])
+        .invoke_handler(tauri::generate_handler![
+            greet,
+            renderFormel,
+            get_wahrheitstabelle_cmd,
+            getFormel,
+            check_formel
+        ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
@@ -66,22 +72,31 @@ fn greet(name: &str) -> String {
 
 #[tauri::command(rename_all = "snake_case")]
 fn getFormel(state: tauri::State<'_, Mutex<MyState>>, name: &str, is_utf: bool) -> String {
-  match state.lock() {
-    Ok(state) => {
-      let formel = state.get(String::from(name));
-      if formel.is_none() {
-        return String::new()
-      }
-      let formel = formel.unwrap();
-      if is_utf {
-        formel.to_utf_string()
-      }else {
-        formel.to_ascii_string()
-      }},
-    Err(_) => String::from(""),
+    match state.lock() {
+        Ok(state) => {
+            let formel = state.get(String::from(name));
+            if formel.is_none() {
+                return String::new();
+            }
+            let formel = formel.unwrap();
+            if is_utf {
+                formel.to_utf_string()
+            } else {
+                formel.to_ascii_string()
+            }
+        }
+        Err(_) => String::from(""),
+    }
 }
+#[tauri::command]
+async fn check_formel(
+        mut state: tauri::State<'_, Mutex<MyState>>,
+        input: &str,
+        ) -> Result<String, String> {
+    let funktion = parseFunktion(&String::from(input));
+    let utf = funktion.to_utf_string();
+    Ok(utf)
 }
-
 #[tauri::command]
 async fn renderFormel(
     mut state: tauri::State<'_, Mutex<MyState>>,
@@ -98,7 +113,7 @@ async fn renderFormel(
     } // state.map.insert(String::from(name), funktion);
       // FUNKTIONEN.lock().into().insert(String::from(name), funktion);
     println!("{}", utf);
-    
+
     Ok(utf)
 }
 
@@ -108,25 +123,23 @@ async fn get_wahrheitstabelle_cmd(
     namen: Vec<String>,
 ) -> Result<String, String> {
     let mut formeln = Vec::new();
- 
+
     match state.lock() {
         Ok(state) => {
-
-          for ele in namen {
-            let func = state.get(ele);
-            if func.is_some() {
-               let func = func.unwrap();
-               formeln.push(*func);
+            for ele in namen {
+                let func = state.get(ele);
+                if func.is_some() {
+                    let func = func.unwrap();
+                    formeln.push(*func);
+                }
             }
-           }
-           
-           Ok(format!("{}",aussagen::get_wahrheitstabelle(formeln)))
-        },
+
+            Ok(format!("{}", aussagen::get_wahrheitstabelle(formeln)))
+        }
         Err(e) => {
-          let r = e.get_ref();
-          drop(r);
-          return Err(e.to_string())}
-          ,
+            let r = e.get_ref();
+            drop(r);
+            return Err(e.to_string());
+        }
     }
-    
 }
