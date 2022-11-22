@@ -1,4 +1,4 @@
-import { Button, Checkbox, Grid, TextField } from '@mui/material';
+import { Button, Checkbox, FormControlLabel, Grid, Switch, TextField } from '@mui/material';
 import { ChangeEvent, FunctionComponent, useState } from 'react';
 
 import { invoke } from '@tauri-apps/api/tauri';
@@ -19,7 +19,7 @@ type InputProps = { // The common Part
 
 const Input: FunctionComponent<InputProps> = (props: InputProps) => {
   if (props.type === 'textarea') {
-      return <textarea {...props} />;
+    return <textarea {...props} />;
   }
   return <input {...props} />;
 };
@@ -30,6 +30,7 @@ function Formel(props: any) {
   const [isFormelOk, setFormelOk] = useState(false);
   const [isFormelWrong, setFormelWrong] = useState(false);
   const [isChecked, setChecked] = useState(false);
+  const [isUTF, setUTF] = useState(true);
 
 
   const handleButton = () => {
@@ -39,7 +40,7 @@ function Formel(props: any) {
           setFormelOk(true);
           setFormelWrong(false);
           console.log(formel);
-          setValue(formel);
+          getFormel();
         }
         )
         .catch((formel: any) => {
@@ -47,6 +48,26 @@ function Formel(props: any) {
           setFormelWrong(true);
           console.error(formel);
         })
+  }
+  const getFormel = () => {
+    isClient &&
+    isFormelOk &&
+    invoke('getFormel', { name: props.name, is_utf: isUTF })
+      .then((formel: any) => {
+        setValue(formel);
+        console.log("formel:"+formel);
+      })
+      .catch((formel: any) => {
+        console.error("getFormel");
+        console.error(formel);
+      })
+  }
+  const handleUTF = (event: any) => {
+    setUTF(!isUTF);
+    if (!isFormelOk) {
+        handleButton();
+    }
+    getFormel();
   }
 
   const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -71,6 +92,7 @@ function Formel(props: any) {
             onChange={handleChange}
           />
           <Button className='renderFormel' onClick={handleButton}>getFormel</Button>
+          <FormControlLabel label={(isUTF ? "UTF" : "ASCII")} control={<Switch checked={isUTF} onClick={handleUTF} ></Switch>} />
         </Grid>
         {
           isFormelOk &&

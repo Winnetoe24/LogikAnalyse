@@ -54,7 +54,7 @@ fn main() {
     let mut state = MyState { vector: Vec::new() };
     tauri::Builder::default()
         .manage(Mutex::from(state))
-        .invoke_handler(tauri::generate_handler![greet, renderFormel, get_wahrheitstabelle_cmd])
+        .invoke_handler(tauri::generate_handler![greet, renderFormel, get_wahrheitstabelle_cmd, getFormel])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
@@ -62,6 +62,24 @@ fn main() {
 #[tauri::command]
 fn greet(name: &str) -> String {
     format!("Hi, {}!", name)
+}
+
+#[tauri::command(rename_all = "snake_case")]
+fn getFormel(state: tauri::State<'_, Mutex<MyState>>, name: &str, is_utf: bool) -> String {
+  match state.lock() {
+    Ok(state) => {
+      let formel = state.get(String::from(name));
+      if formel.is_none() {
+        return String::new()
+      }
+      let formel = formel.unwrap();
+      if is_utf {
+        formel.to_utf_string()
+      }else {
+        formel.to_ascii_string()
+      }},
+    Err(_) => String::from(""),
+}
 }
 
 #[tauri::command]
@@ -90,7 +108,7 @@ async fn get_wahrheitstabelle_cmd(
     namen: Vec<String>,
 ) -> Result<String, String> {
     let mut formeln = Vec::new();
-
+ 
     match state.lock() {
         Ok(state) => {
 
