@@ -1,7 +1,7 @@
-import {Button, Checkbox, FormControlLabel, Grid, Stack, Switch, TextField} from '@mui/material';
-import {ChangeEvent, FunctionComponent, useState} from 'react';
+import { Button, Checkbox, FormControlLabel, Grid, Stack, Switch, TextField } from '@mui/material';
+import { ChangeEvent, Dispatch, FunctionComponent, SetStateAction, useState } from 'react';
 
-import {invoke} from '@tauri-apps/api/tauri';
+import { invoke } from '@tauri-apps/api/tauri';
 
 const isClient = typeof window !== 'undefined'
 
@@ -21,57 +21,62 @@ type InputProps = { // The common Part
 
 const Input: FunctionComponent<InputProps> = (props: InputProps) => {
     if (props.type === 'textarea') {
-        return <textarea {...props}/>;
+        return <textarea {...props} />;
     }
     return <input {...props} />;
 };
 
 
-function Formel(props: any) {
+export interface FormelProps {
+    name: string;
+    selection: [boolean, Dispatch<SetStateAction<boolean>>];
+}
+
+
+function Formel(props: FormelProps): JSX.Element{
     const [eingabe, setEingabe] = useState("");
     const [isFormelOk, setFormelOk] = useState(false);
     const [isFormelWrong, setFormelWrong] = useState(false);
-    const [isChecked, setChecked] = useState(false);
     const [isUTF, setUTF] = useState(false);
 
 
     const renderFormel = () => {
         isClient &&
-        invoke('renderFormel', {name: props.name, input: eingabe})
-            .then((formel: any) => {
+            invoke('renderFormel', { name: props.name, input: eingabe })
+                .then((formel: any) => {
                     setFormelOk(true);
                     setFormelWrong(false);
                     console.log(formel);
                     getFormel();
                 }
-            )
-            .catch((formel: any) => {
-                setFormelOk(false);
-                setFormelWrong(true);
-                console.error(formel);
-            });
+                )
+                .catch((formel: any) => {
+                    setFormelOk(false);
+                    setFormelWrong(true);
+                    console.error(formel);
+                });
     }
 
     const checkFormel = () => {
         console.log("check start");
         isClient &&
-        invoke('check_formel', {name: props.name, input: eingabe})
-        .then((formel: any) => {
-            console.log("check ok");
-            setFormelOk(true);
-            setFormelWrong(false);
-        })
-        .catch((formel: any) => {
-            console.error("error check:"+formel);
-            setFormelOk(false);
-            setFormelWrong(true);
-        })
+            invoke('check_formel', { name: props.name, input: eingabe })
+                .then((formel: any) => {
+                    console.log("check ok");
+                    setFormelOk(true);
+                    setFormelWrong(false);
+                })
+                .catch((formel: any) => {
+                    console.error("error check:" + formel);
+                    setFormelOk(false);
+                    setFormelWrong(true);
+                })
         if (!isFormelOk) {
             setFormelWrong(true);
         }
     }
 
-    const handleFocus = (event: React.FocusEvent<HTMLTextAreaElement>) => {
+    const handleFocus = (event: React.FocusEvent<HTMLInputElement>) => {
         renderFormel();
     }
     const getFormel = () => {
@@ -79,53 +84,59 @@ function Formel(props: any) {
     }
     const getFormelBool = (is_utf: boolean) => {
         isClient &&
-        isFormelOk &&
-        invoke('getFormel', {name: props.name, is_utf: is_utf})
-            .then((formel: any) => {
-//        setValue(formel);
-                console.log("formel:" + formel + " utf:" + isUTF);
-                setEingabe(formel);
-            })
-            .catch((formel: any) => {
-                console.error("getFormel");
-                console.error(formel);
-            })
+            isFormelOk &&
+            invoke('getFormel', { name: props.name, is_utf: is_utf })
+                .then((formel: any) => {
+                    //        setValue(formel);
+                    console.log("formel:" + formel + " utf:" + isUTF);
+                    setEingabe(formel);
+                })
+                .catch((formel: any) => {
+                    console.error("getFormel");
+                    console.error(formel);
+                })
     }
     const handleUTF = (event: any) => {
+        console.log("handleUTF selection:"+props.selection[0]);
         if (!isFormelOk) {
             renderFormel();
         }
         getFormelBool(!isUTF);
         setUTF(!isUTF);
+        console.log("handleUTF selection:"+props.selection[0]);
     }
 
     const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
         console.log("change");
         setFormelOk(false);
         setFormelWrong(false);
-        console.log("change value:"+event.target.value);
+        console.log("change value:" + event.target.value);
         setEingabe(event.target.value);
         checkFormel();
     }
 
     const handleChecked = (event: ChangeEvent) => {
-        setChecked(!isChecked);
+       props.selection[1](!props.selection[0]);
     }
 
+    const isSelected = () => {return false;}
+
     return (
+
         <Grid className='formel'>
-            <Checkbox className='checkbox' onChange={handleChecked}/>
+            <Checkbox className='checkbox' onChange={handleChecked} />
             <div className='formelbereich1'>
                 <h5>Formel "{props.name}"</h5>
                 <Stack direction="row">
                     <Input className='formelEingabe'
-                           value={eingabe}
-                           onChange={handleChange}
-                           onBlur={handleFocus}
+                        type="text"
+                        value={eingabe}
+                        onChange={handleChange}
+                        onBlur={handleFocus}
                     />
                     <div className="utf-switch">
-                    <FormControlLabel label={(isUTF ? "　UTF　" : "ASCII")}
-                                      control={<Switch  checked={isUTF} onClick={handleUTF}></Switch>}/>
+                        <FormControlLabel label={(isUTF ? "　UTF　" : "ASCII")}
+                            control={<Switch checked={isUTF} onClick={handleUTF}></Switch>} />
                     </div>
                 </Stack>
                 {
@@ -137,8 +148,9 @@ function Formel(props: any) {
                     <p>Fehler</p>
                 }
             </div>
-
-        </Grid>);
+           
+        </Grid>
+);
 }
 
 // class Formel extends React.Component {
