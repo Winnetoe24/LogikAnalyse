@@ -108,7 +108,7 @@ function Formel(props: any) {
         checkFormel();
     }
 
-    const handleChecked = (event: ChangeEvent) => {
+    const handleChecked = (event:  ChangeEvent) => {
         setChecked(!isChecked);
     }
 

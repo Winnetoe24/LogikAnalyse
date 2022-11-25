@@ -12,36 +12,22 @@ use std::{
 use lazy_static::lazy_static;
 use serde_json::Map;
 use tauri::utils::resources::ResourcePaths;
-use LogikLib::aussagen;
+use LogikLib::aussagen::{self, structures::FormelKontext};
 use LogikLib::aussagen::{
     parseFunktion,
     structures::{AussagenFunktion, Wahrheitstabelle},
 };
 struct MyState {
-    vector: Vec<Mapping>,
+    kontext: FormelKontext
 }
 
 impl MyState {
     fn insert(&mut self, name: String, funktion: Box<AussagenFunktion>) {
-        for i in 0..self.vector.len() {
-            let ele = self.vector.get(i).unwrap();
-            if (ele.name.eq(&name)) {
-                self.vector.remove(i);
-            }
-        }
-        self.vector.push(Mapping {
-            name: name,
-            funktion: funktion,
-        });
+        self.kontext.funktionen.insert(name, *funktion);
     }
 
-    fn get(&self, name: String) -> Option<Box<AussagenFunktion>> {
-        for ele in &self.vector {
-            if (ele.name.eq(&name)) {
-                return Some(ele.funktion.clone());
-            }
-        }
-        None
+    fn get(&self, name: String) -> Option<&AussagenFunktion> {
+        self.kontext.funktionen.get(&name)
     }
 }
 
@@ -51,7 +37,7 @@ struct Mapping {
 }
 
 fn main() {
-    let mut state = MyState { vector: Vec::new() };
+    let mut state = MyState { kontext: FormelKontext::new() };
     tauri::Builder::default()
         .manage(Mutex::from(state))
         .invoke_handler(tauri::generate_handler![
@@ -130,11 +116,11 @@ async fn get_wahrheitstabelle_cmd(
                 let func = state.get(ele);
                 if func.is_some() {
                     let func = func.unwrap();
-                    formeln.push(*func);
+                    formeln.push(func);
                 }
             }
 
-            Ok(format!("{}", aussagen::get_wahrheitstabelle(formeln)))
+            Ok(format!("{}", aussagen::get_wahrheitstabelle(&state.kontext, formeln)))
         }
         Err(e) => {
             let r = e.get_ref();
