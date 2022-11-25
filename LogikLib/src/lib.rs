@@ -38,20 +38,21 @@ mod tests {
         )
         .result(&kontext, &HashMap::new(), false));
 
-        let mut belegung = HashMap::new();
-        belegung.insert(String::from("A"), false);
-        belegung.insert(String::from("B"), false);
-        assert!(!parseFunktion(&String::from("(A & B)")).result(&kontext, &belegung, false));
-        belegung.insert(String::from("A"), true);
-        belegung.insert(String::from("B"), false);
-        assert!(!parseFunktion(&String::from("(A & B)")).result(&kontext, &belegung, false));
-        belegung.insert(String::from("A"), false);
-        belegung.insert(String::from("B"), true);
-        assert!(!parseFunktion(&String::from("(A & B)")).result(&kontext, &belegung, false));
-        belegung.insert(String::from("A"), true);
-        belegung.insert(String::from("B"), true);
-        assert!(parseFunktion(&String::from("(A & B)")).result(&kontext, &belegung, false));
+        let mut belegung_map = HashMap::new();
+        belegung_map.insert(String::from("A"), false);
+        belegung_map.insert(String::from("B"), false);
+        assert!(!parseFunktion(&String::from("(A & B)")).result(&kontext, &belegung_map, false));
+        belegung_map.insert(String::from("A"), true);
+        belegung_map.insert(String::from("B"), false);
+        assert!(!parseFunktion(&String::from("(A & B)")).result(&kontext, &belegung_map, false));
+        belegung_map.insert(String::from("A"), false);
+        belegung_map.insert(String::from("B"), true);
+        assert!(!parseFunktion(&String::from("(A & B)")).result(&kontext, &belegung_map, false));
+        belegung_map.insert(String::from("A"), true);
+        belegung_map.insert(String::from("B"), true);
+        assert!(parseFunktion(&String::from("(A & B)")).result(&kontext, &belegung_map, false));
 
+        
         test_parse("(F ⋀ C)");
         test_parse("(F ⋁ (phi1 ⋀ phi2))");
         test_parse_ascii("(F & C)");

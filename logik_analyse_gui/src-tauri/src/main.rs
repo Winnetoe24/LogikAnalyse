@@ -104,7 +104,7 @@ async fn renderFormel(
 }
 
 #[tauri::command]
-async fn get_wahrheitstabelle_cmd(
+async fn get_wahrheitstabelle_cmd( 
     mut state: tauri::State<'_, Mutex<MyState>>,
     namen: Vec<String>,
 ) -> Result<String, String> {
@@ -117,7 +117,7 @@ async fn get_wahrheitstabelle_cmd(
                 if func.is_some() {
                     let func = func.unwrap();
                     formeln.push(func);
-                }
+                } 
             }
 
             Ok(format!("{}", aussagen::get_wahrheitstabelle(&state.kontext, formeln)))
@@ -129,3 +129,4 @@ async fn get_wahrheitstabelle_cmd(
         }
     }
 }
+

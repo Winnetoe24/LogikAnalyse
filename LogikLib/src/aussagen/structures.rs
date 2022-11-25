@@ -136,10 +136,12 @@ impl FormelKontext {
         None
     }
 
-    pub fn get_keys(&self) -> Vec<String> {
+    pub fn get_keys(&self, formeln: &Vec<&AussagenFunktion>) -> Vec<String> {
         let mut v = Vec::new();
         for ele in &self.funktionen {
-            v.push(ele.0.clone());
+            if formeln.contains(&ele.1)  {
+                v.push(ele.0.clone());
+            }
         }
         v
     }
@@ -180,11 +182,10 @@ impl Display for Wahrheitstabelle {
 
         let mut pattern_map:HashMap<String, String> = HashMap::new();
         for ele in &self.reihenfolge {
-            let uft_string = ele;
-            write!(f, " {} |", uft_string)?;
-            let len = uft_string.len();
+            write!(f, " {} |", ele)?;
+            let len = ele.len();
             let mut pattern = String::with_capacity(len);
-            let spaces_len = (len - 2) / 2;
+            let spaces_len = (len) / 2;
             for x in 0..spaces_len {
                 pattern.push(' ');
             }
@@ -212,11 +213,15 @@ impl Display for Wahrheitstabelle {
                 let pattern = pattern_map.get(erg).unwrap_or(&def);
 
                 let filled_pattern;
-                if *(&ele.ergebnisse).get(erg).unwrap() {
+                let get = (&ele.ergebnisse).get(erg);
+                if get.is_none() {
+                    return Err(std::fmt::Error{});
+                }else {
+                if *get.unwrap() {
                     filled_pattern = pattern.replace("{}", "1");
                 }else {
                     filled_pattern = pattern.replace("{}", "0");
-                }
+                }}
                 write!(f, "{}", filled_pattern)?;
             }
             writeln!(f,"")?;

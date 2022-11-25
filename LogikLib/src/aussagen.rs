@@ -3,6 +3,7 @@ use slab_tree::{NodeId, Tree, TreeBuilder};
 use std::any::Any;
 use std::collections::{HashMap, HashSet};
 use std::env::current_exe;
+use std::f32::consts::E;
 use std::fs::remove_file;
 use std::mem::{needs_drop, transmute};
 use std::ops::Add;
@@ -196,10 +197,8 @@ fn printTree(slab_tree: &Tree<Parsed>, node_id_option: Option<NodeId>) {
 
 pub fn get_belegung(kontext: &FormelKontext, funktionen: &Vec<&AussagenFunktion>, werte: &HashMap<String, bool>) -> Belegung {
     let mut ergebnisse = HashMap::new();
-    let mut temp_vec = Vec::new();
     for aussagen_funktion in funktionen {
         ergebnisse.insert(kontext.get_key(&aussagen_funktion).unwrap(), aussagen_funktion.result(kontext, &werte, false));
-        temp_vec.push(aussagen_funktion.clone());
     }
 
     Belegung {
@@ -239,10 +238,11 @@ fn get_wahrheitstabelle_reku(kontext: &FormelKontext, keys: &mut Vec<&String>, f
         },
         None => {
             let mut belegungen = Vec::new();
-            belegungen.push(get_belegung(kontext,funktionen, map));
+            belegungen.push(get_belegung(kontext,&funktionen, map));
+            
             Wahrheitstabelle {
                 belegungen,
-                reihenfolge: kontext.get_keys()
+                reihenfolge: kontext.get_keys(&funktionen)
             }
         },
     }
