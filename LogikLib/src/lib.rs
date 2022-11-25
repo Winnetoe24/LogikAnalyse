@@ -9,6 +9,7 @@ mod tests {
     use slab_tree::Tree;
     use std::collections::HashMap;
 
+    use crate::aussagen::structures::FormelKontext;
     use crate::aussagen::{parseFunktion, get_wahrheitstabelle};
     use crate::aussagen::structures::AussagenFunktion::{*, self};
 
@@ -19,21 +20,37 @@ mod tests {
         let result = add(2, 2);
         assert_eq!(result, 4);
 
-        assert!(
-            VARIABEL(String::from("A")).result(&HashMap::from([(String::from("A"), true)]), false)
-        );
-        assert!(TOP().result(&HashMap::new(), false));
-        assert!(!BOTTOM().result(&HashMap::new(), false));
+        let kontext = FormelKontext::new();
 
-        assert!(AND(Box::new(TOP()), Box::new(TOP())).result(&HashMap::new(), false));
-        assert!(OR(Box::new(TOP()), Box::new(TOP())).result(&HashMap::new(), false));
-        assert!(NOT(Box::new(BOTTOM())).result(&HashMap::new(), false));
+        assert!(
+            VARIABEL(String::from("A")).result(&kontext, &HashMap::from([(String::from("A"), true)]), false)
+        );
+        assert!(TOP().result(&kontext, &HashMap::new(), false));
+        assert!(!BOTTOM().result(&kontext, &HashMap::new(), false));
+
+        assert!(AND(Box::new(TOP()), Box::new(TOP())).result(&kontext, &HashMap::new(), false));
+        assert!(OR(Box::new(TOP()), Box::new(TOP())).result(&kontext, &HashMap::new(), false));
+        assert!(NOT(Box::new(BOTTOM())).result(&kontext, &HashMap::new(), false));
 
         assert!(AND(
             Box::new(OR(Box::new(BOTTOM()), Box::new(NOT(Box::new(BOTTOM()))))),
             Box::new(TOP())
         )
-        .result(&HashMap::new(), false));
+        .result(&kontext, &HashMap::new(), false));
+
+        let mut belegung = HashMap::new();
+        belegung.insert(String::from("A"), false);
+        belegung.insert(String::from("B"), false);
+        assert!(!parseFunktion(&String::from("(A & B)")).result(&kontext, &belegung, false));
+        belegung.insert(String::from("A"), true);
+        belegung.insert(String::from("B"), false);
+        assert!(!parseFunktion(&String::from("(A & B)")).result(&kontext, &belegung, false));
+        belegung.insert(String::from("A"), false);
+        belegung.insert(String::from("B"), true);
+        assert!(!parseFunktion(&String::from("(A & B)")).result(&kontext, &belegung, false));
+        belegung.insert(String::from("A"), true);
+        belegung.insert(String::from("B"), true);
+        assert!(parseFunktion(&String::from("(A & B)")).result(&kontext, &belegung, false));
 
         test_parse("(F ⋀ C)");
         test_parse("(F ⋁ (phi1 ⋀ phi2))");
@@ -59,8 +76,10 @@ mod tests {
 
     #[test]
     fn wahrheitstabelle() {
+        let kontext = FormelKontext::new();
+
         let funktion:AussagenFunktion = *parseFunktion(&String::from("(A & ( B | C))")).to_owned();
-        let tabelle = get_wahrheitstabelle(vec![funktion]);
+        let tabelle = get_wahrheitstabelle(&kontext, vec![&funktion]);
         println!("{:?}", tabelle);
         println!("{}", tabelle);
     }

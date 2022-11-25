@@ -9,7 +9,7 @@ use std::ops::Add;
 use std::process::Termination;
 use std::ptr::addr_of_mut;
 
-use self::structures::{AussagenFunktion, Belegung, Wahrheitstabelle};
+use self::structures::{AussagenFunktion, Belegung, Wahrheitstabelle, FormelKontext};
 
 pub mod structures;
 
@@ -194,25 +194,26 @@ fn printTree(slab_tree: &Tree<Parsed>, node_id_option: Option<NodeId>) {
     }
 }
 
-pub fn get_belegung(funktionen: &Vec<AussagenFunktion>, werte: &HashMap<String, bool>) -> Belegung {
-    let mut ergenisse = Vec::new();
+pub fn get_belegung(kontext: &FormelKontext, funktionen: &Vec<&AussagenFunktion>, werte: &HashMap<String, bool>) -> Belegung {
+    let mut ergebnisse = HashMap::new();
     let mut temp_vec = Vec::new();
     for aussagen_funktion in funktionen {
-        ergenisse.push(aussagen_funktion.result(&werte, false));
+        ergebnisse.insert(kontext.get_key(&aussagen_funktion).unwrap(), aussagen_funktion.result(kontext, &werte, false));
         temp_vec.push(aussagen_funktion.clone());
     }
 
     Belegung {
-        funktionen: temp_vec,
         werte: werte.clone(),
-        ergebnis: ergenisse,
+        ergebnisse: ergebnisse,
     }
 }
 
-pub fn get_wahrheitstabelle(funktionen: Vec<AussagenFunktion>) -> Wahrheitstabelle {
+
+
+pub fn get_wahrheitstabelle(kontext: &FormelKontext,funktionen: Vec<&AussagenFunktion>) -> Wahrheitstabelle {
     let mut keys: HashSet<&String> = HashSet::new();
     for aussagen_funktionen in &funktionen {
-        let mut set = aussagen_funktionen.get_keys();
+        let mut set = aussagen_funktionen.get_keys(kontext);
          set.extend(keys);
          keys = set;
 
@@ -220,27 +221,28 @@ pub fn get_wahrheitstabelle(funktionen: Vec<AussagenFunktion>) -> Wahrheitstabel
     let mut keys: Vec<&String> = Vec::from_iter(keys.into_iter());
     
 
-    get_wahrheitstabelle_reku(&mut keys, &funktionen, &mut HashMap::new())
+    get_wahrheitstabelle_reku(kontext, &mut keys, &funktionen, &mut HashMap::new())
 
 }
 
-fn get_wahrheitstabelle_reku(keys: &mut Vec<&String>, funktionen: &Vec<AussagenFunktion>, map: &mut HashMap<String, bool>) -> Wahrheitstabelle {
+fn get_wahrheitstabelle_reku(kontext: &FormelKontext, keys: &mut Vec<&String>, funktionen: &Vec<&AussagenFunktion>, map: &mut HashMap<String, bool>) -> Wahrheitstabelle {
     let key = keys.pop();
     match key {
         Some(key) => {
             map.insert(key.clone(), false);
-            let mut tabelle = get_wahrheitstabelle_reku(keys, funktionen, map);
+            let mut tabelle = get_wahrheitstabelle_reku(kontext, keys, funktionen, map);
             map.insert(key.clone(), true);
-            let tabelle2 = get_wahrheitstabelle_reku(keys, &funktionen, map);
+            let tabelle2 = get_wahrheitstabelle_reku(kontext, keys, &funktionen, map);
             tabelle.join(tabelle2);
             keys.push(key);
             tabelle
         },
         None => {
             let mut belegungen = Vec::new();
-            belegungen.push(get_belegung(&funktionen, map));
+            belegungen.push(get_belegung(kontext,funktionen, map));
             Wahrheitstabelle {
-                belegungen
+                belegungen,
+                reihenfolge: kontext.get_keys()
             }
         },
     }

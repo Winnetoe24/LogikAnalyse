@@ -13,12 +13,12 @@ import Formelbereich from '../components/Formelbereich'
 
 
 
-const Home: NextPage = () => /* useEffect(() => {*/ /*   invoke('greet', { name: 'World' })*/ /*     .then(console.log)*/ /*     .catch(console.error)*/ /* }, []);*/ (
+const Home: NextPage = () => /* useEffect(() => {*/ /*   invoke('greet', { name: 'World' })*/ /*     .then(console.log)*/ /*     .catch(console.error)*/ /* }, []);*/(
   <div>
 
     <h1>Aussagenlogik</h1>
-      <Formelbereich/>
-    
+    <Formelbereich />
+
   </div>
 )
 
