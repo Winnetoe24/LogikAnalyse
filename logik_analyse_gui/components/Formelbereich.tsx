@@ -10,19 +10,29 @@ import IconButton from '@mui/material/IconButton';
 
 
 
+
+
+
 function Formelbereich(props: any) {
 
-    let formeln = [<Formel name="phi1" />,
-    <Formel name="phi2" />,
-    <Formel name="phi3" />];
+    let formeln = [
+    <Formel name="phi1" selection={useState(false)}/>,
+    <Formel name="phi2" selection={useState(false)}/>,
+    <Formel name="phi3" selection={useState(false)}/>];
     const [tabelle, setTabelle] = useState("");
 
     const generateTabelle = (event: HTMLButtonElement) => {
         let namen: String[] = [];
         formeln.forEach(element => {
-            console.log(element.props.name);
-            namen.push(element.props.name);
+            if (element.props.selection[0]) {
+                console.log(element.props.name);
+                namen.push(element.props.name);
+            }
         });
+        if (namen.length == 0) {
+            setTabelle("Bitte wähle mindestens eine Formel aus");
+            return;
+        }
         invoke("get_wahrheitstabelle_cmd", { namen }).then((value: any) => {
             setTabelle(value);
             console.log(value);
@@ -72,3 +82,7 @@ function Formelbereich(props: any) {
 }
 
 export default Formelbereich;
+
+function getNum() {
+    throw new Error('Function not implemented.');
+}
