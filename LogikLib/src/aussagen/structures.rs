@@ -12,8 +12,8 @@ pub enum AussagenFunktion {
     TOP(),
     BOTTOM(),
     NOT(Box<AussagenFunktion>),
-    AND(Box<AussagenFunktion>, Box<AussagenFunktion>),
-    OR(Box<AussagenFunktion>, Box<AussagenFunktion>),
+    AND(Vec<Box<AussagenFunktion>>),
+    OR(Vec<Box<AussagenFunktion>>),
 }
 
 impl Display for AussagenFunktion {
@@ -33,10 +33,12 @@ impl AussagenFunktion {
             },
             AussagenFunktion::TOP() | AussagenFunktion::BOTTOM() => HashSet::new(),
             AussagenFunktion::NOT(funktion) => funktion.get_keys(kontext),
-            AussagenFunktion::AND(funktion, funktion2)
-            | AussagenFunktion::OR(funktion, funktion2) => {
-                let mut set = funktion.get_keys(kontext);
-                set.extend(&funktion2.get_keys(kontext));
+            AussagenFunktion::AND(funktion)
+            | AussagenFunktion::OR(funktion) => {
+                let mut set = HashSet::new();
+                for ele in funktion {
+                    set.extend(&ele.get_keys(kontext));
+                }
                 set
             }
         }
@@ -54,11 +56,20 @@ impl AussagenFunktion {
             AussagenFunktion::TOP() => true,
             AussagenFunktion::BOTTOM() => false,
             AussagenFunktion::NOT(funktion) => !funktion.result(kontext,belegung, default),
-            AussagenFunktion::AND(funktion, funktion2) => {
-                funktion.result(kontext,belegung, default) & funktion2.result(kontext,belegung, default)
+            AussagenFunktion::AND(funktion) => 
+            {   
+                let mut res = true;
+                for ele in funktion {
+                    res &= ele.result(kontext, belegung, default);
+                }
+                res
             }
-            AussagenFunktion::OR(funktion, funktion2) => {
-                funktion.result(kontext,belegung, default) || funktion2.result(kontext,belegung, default)
+            AussagenFunktion::OR(funktion) => {
+                let mut res = false;
+                for ele in funktion {
+                    res |= ele.result(kontext, belegung, default);
+                }
+                res
             }
         }
     }
@@ -69,15 +80,33 @@ impl AussagenFunktion {
             AussagenFunktion::TOP() => String::from("true"),
             AussagenFunktion::BOTTOM() => String::from("false"),
             AussagenFunktion::NOT(funktion) => format!("-{}", funktion.to_ascii_string()),
-            AussagenFunktion::AND(funktion, funktion2) => format!(
-                "({} & {})",
-                funktion.to_ascii_string(),
-                funktion2.to_ascii_string()
+            AussagenFunktion::AND(funktion) => format!(
+                "({})",
+                {
+                    let mut s = String::new();
+                    for ele in funktion {
+                        if s.is_empty() {
+                            s = ele.to_ascii_string();
+                        }else {
+                            s = format!("{} & {}", s, ele.to_ascii_string());
+                        }
+                    }
+                    s    
+                }
             ),
-            AussagenFunktion::OR(funktion, funktion2) => format!(
-                "({} | {})",
-                funktion.to_ascii_string(),
-                funktion2.to_ascii_string()
+            AussagenFunktion::OR(funktion) =>format!(
+                "({})",
+                {
+                    let mut s = String::new();
+                    for ele in funktion {
+                        if s.is_empty() {
+                            s = ele.to_ascii_string();
+                        }else {
+                            s = format!("{} | {}", s, ele.to_ascii_string());
+                        }
+                    }
+                    s    
+                }
             ),
         }
     }
@@ -87,15 +116,33 @@ impl AussagenFunktion {
             AussagenFunktion::TOP() => String::from("⊤"),
             AussagenFunktion::BOTTOM() => String::from("⊥"),
             AussagenFunktion::NOT(funktion) => format!("¬{}", funktion.to_utf_string()),
-            AussagenFunktion::AND(funktion, funktion2) => format!(
-                "({} ⋀ {})",
-                funktion.to_utf_string(),
-                funktion2.to_utf_string()
+            AussagenFunktion::AND(funktion) => format!(
+                "({})",
+                {
+                    let mut s = String::new();
+                    for ele in funktion {
+                        if s.is_empty() {
+                            s = ele.to_utf_string();
+                        }else {
+                            s = format!("{} ⋀ {}", s, ele.to_utf_string());
+                        }
+                    }
+                    s    
+                }
             ),
-            AussagenFunktion::OR(funktion, funktion2) => format!(
-                "({} ⋁ {})",
-                funktion.to_utf_string(),
-                funktion2.to_utf_string()
+            AussagenFunktion::OR(funktion) =>format!(
+                "({})",
+                {
+                    let mut s = String::new();
+                    for ele in funktion {
+                        if s.is_empty() {
+                            s = ele.to_utf_string();
+                        }else {
+                            s = format!("{} ⋁ {}", s, ele.to_utf_string());
+                        }
+                    }
+                    s    
+                }
             ),
         }
     }
@@ -108,8 +155,8 @@ impl Clone for AussagenFunktion {
             Self::TOP() => Self::TOP(),
             Self::BOTTOM() => Self::BOTTOM(),
             Self::NOT(arg0) => Self::NOT(arg0.clone()),
-            Self::AND(arg0, arg1) => Self::AND(arg0.clone(), arg1.clone()),
-            Self::OR(arg0, arg1) => Self::OR(arg0.clone(), arg1.clone()),
+            Self::AND(arg0) => Self::AND(arg0.clone()),
+            Self::OR(arg0) => Self::OR(arg0.clone()),
         }
     }
 }
@@ -131,7 +178,7 @@ impl FormelKontext {
 
     pub fn get_key(&self, value: &AussagenFunktion) -> Option<String> {
         for ele in &self.funktionen {
-            if (ele.1.eq(value)) {return Some(ele.0.clone());}
+            if ele.1.eq(value) {return Some(ele.0.clone());}
         }
         None
     }
@@ -186,6 +233,7 @@ impl Display for Wahrheitstabelle {
             let len = ele.len();
             let mut pattern = String::with_capacity(len);
             let spaces_len = (len) / 2;
+            pattern.push(' ');
             for x in 0..spaces_len {
                 pattern.push(' ');
             }

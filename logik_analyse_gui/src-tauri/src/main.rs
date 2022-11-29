@@ -10,7 +10,6 @@ use std::{
 };
 
 use lazy_static::lazy_static;
-use serde_json::Map;
 use tauri::utils::resources::ResourcePaths;
 use LogikLib::aussagen::{self, structures::FormelKontext};
 use LogikLib::aussagen::{
@@ -24,12 +23,12 @@ struct MyState {
 impl MyState {
     fn insert(&mut self, name: String, funktion: Box<AussagenFunktion>) {
         self.kontext.funktionen.insert(name, *funktion);
-    }
+    } 
 
     fn get(&self, name: String) -> Option<&AussagenFunktion> {
         self.kontext.funktionen.get(&name)
     }
-}
+} 
 
 struct Mapping {
     name: String,
@@ -74,22 +73,24 @@ fn getFormel(state: tauri::State<'_, Mutex<MyState>>, name: &str, is_utf: bool) 
         Err(_) => String::from(""),
     }
 }
+    
+
 #[tauri::command]
 async fn check_formel(
         mut state: tauri::State<'_, Mutex<MyState>>,
         input: &str,
         ) -> Result<String, String> {
-    let funktion = parseFunktion(&String::from(input));
+    let funktion = parseFunktion(&String::from(input))?;
     let utf = funktion.to_utf_string();
-    Ok(utf)
-}
+    Ok(utf) 
+} 
 #[tauri::command]
 async fn renderFormel(
     mut state: tauri::State<'_, Mutex<MyState>>,
     name: &str,
     input: &str,
 ) -> Result<String, String> {
-    let funktion = parseFunktion(&String::from(input));
+    let funktion = parseFunktion(&String::from(input))?;
     let utf = funktion.to_utf_string();
     match state.lock() {
         Ok(mut state) => {

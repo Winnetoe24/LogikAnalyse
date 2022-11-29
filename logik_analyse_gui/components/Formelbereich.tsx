@@ -27,6 +27,7 @@ function Formelbereich(props: any) {
             if (element.props.selection[0]) {
                 console.log(element.props.name);
                 namen.push(element.props.name);
+    
             }
         });
         if (namen.length == 0) {
@@ -36,7 +37,6 @@ function Formelbereich(props: any) {
         invoke("get_wahrheitstabelle_cmd", { namen }).then((value: any) => {
             setTabelle(value);
             console.log(value);
-
         }).catch((e) => {
             console.log(e);
         });
