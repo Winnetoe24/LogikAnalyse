@@ -73,12 +73,15 @@ pub fn parseFunktion(eingabe: &String) -> Result<Box<AussagenFunktion>, String> 
             }
             't' | '⊤' => {
                 current_node_id = set_or_append_option(&mut tree, current_node_id, ParseOption::TOP())?;
-                current_node_id = move_up(&mut tree, current_node_id)?;
+                if has_parent(&mut tree, current_node_id)? {
+                    current_node_id = move_up(&mut tree, current_node_id)?;
+                }
             }
             'f' | '⊥' => {
                 current_node_id = set_or_append_option(&mut tree, current_node_id, ParseOption::BOTTOM())?;
-                current_node_id = move_up(&mut tree, current_node_id)?;
-            }
+                if has_parent(&mut tree, current_node_id)? {
+                    current_node_id = move_up(&mut tree, current_node_id)?;
+                }            }
             '-' | '¬' => {
                 current_node_id = set_or_append_option(&mut tree, current_node_id, ParseOption::NOT())?;
                 current_node_id = append_unspecified_and_move_down(&mut tree, current_node_id)?;

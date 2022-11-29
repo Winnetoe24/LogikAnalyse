@@ -85,12 +85,15 @@ function Formelbereich(props: any) {
 
     }
 
-    const handleNewFormel = (event: MouseEvent) => {
+    const handleNewFormel = (event: any) => {
         let formel = createNextFormel();
-        
-        
+
+
     }
 
+    const handleHelp = (event: any) => {
+         setTabelle("Gebe deine Formeln in die Textfelder ein. \nZum einfacheren Eingeben gibt es ein Mapping zu Ascii Charakteren. \n t = top \n f = bottom \n & = and \n | = or \n\nUm neue Funktionen hinzuzufügen klicke auf das + \nUm eine Wahrheitstabelle auszugeben klicke auf Tabelle. \nUm zu prüfen um Formeln äquivalent sind, klicke auf Äquivalenz");
+    }
     return (
 
         <Stack className='formelbereich'>
@@ -101,7 +104,7 @@ function Formelbereich(props: any) {
                     <Button className='button-text' onClick={handleNewFormel}>+</Button>
                 </Stack>
 
-                <Werkzeugkasten onTabelle={generateTabelle} onAequivalenz={aequivalenz} />
+                <Werkzeugkasten onTabelle={generateTabelle} onAequivalenz={aequivalenz} onHelp={handleHelp} />
             </Stack>
             {
                 tabelle != "" &&

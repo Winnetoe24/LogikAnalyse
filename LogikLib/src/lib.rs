@@ -104,6 +104,13 @@ mod tests {
     }
 
     #[test]
+    fn test_simple_functions() {
+        test_parse_ascii("A");
+        test_parse("⊥");
+        test_parse("⊤");
+    }
+
+    #[test]
     fn swich_parent() {
         let mut tree:Tree<Parsed> = Tree::new();
         tree.set_root(Parsed {option: VARIABLE(String::from("1"), false) });
