@@ -92,7 +92,7 @@ function Formelbereich(props: any) {
     }
 
     const handleHelp = (event: any) => {
-         setTabelle("Gebe deine Formeln in die Textfelder ein. \nZum einfacheren Eingeben gibt es ein Mapping zu Ascii Charakteren. \n t = top \n f = bottom \n & = and \n | = or \n\nUm neue Funktionen hinzuzufügen klicke auf das + \nUm eine Wahrheitstabelle auszugeben klicke auf Tabelle. \nUm zu prüfen um Formeln äquivalent sind, klicke auf Äquivalenz");
+         setTabelle("Gib deine Formeln in die Textfelder ein. \nZum einfacheren Eingeben gibt es ein Mapping zu Ascii Charakteren. \n t = top \n f = bottom \n & = and \n | = or \n\nUm neue Funktionen hinzuzufügen klicke auf das + \nUm eine Wahrheitstabelle auszugeben klicke auf Tabelle. \nUm zu prüfen ob Formeln äquivalent sind, klicke auf Äquivalenz.");
     }
     return (
 

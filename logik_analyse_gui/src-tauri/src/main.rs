@@ -189,9 +189,9 @@ async fn is_aequivalent(
                 } else {
                     s = format!("{}\n{}", s, ele.0.replace("≣", {
                         if ele.1 {
-                            "≡"
+                            "="
                         }else {
-                            "≢"
+                            "≠"
                         }
                     }));
                 }
