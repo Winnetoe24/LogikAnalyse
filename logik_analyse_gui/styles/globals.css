@@ -27,6 +27,16 @@ a {
   align-content: center;
 }
 
+.utf-switch {
+    padding-left: 50px;
+}
+
+.css-ahj2mt-MuiTypography-root {
+    font-family: Courier !IMPORTANT;
+    width: 50px;
+
+}
+
 div.formelbereich {
 
   padding: 10px;

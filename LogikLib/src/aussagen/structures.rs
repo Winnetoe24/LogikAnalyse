@@ -4,14 +4,16 @@ use std::collections::{HashMap, HashSet};
 use std::fmt::{Display, Formatter};
 use std::ptr::addr_of_mut;
 
+
+
 #[derive(Debug, PartialEq, Eq, Hash)]
 pub enum AussagenFunktion {
     VARIABEL(String),
     TOP(),
     BOTTOM(),
     NOT(Box<AussagenFunktion>),
-    AND(Box<AussagenFunktion>, Box<AussagenFunktion>),
-    OR(Box<AussagenFunktion>, Box<AussagenFunktion>),
+    AND(Vec<Box<AussagenFunktion>>),
+    OR(Vec<Box<AussagenFunktion>>),
 }
 
 impl Display for AussagenFunktion {
@@ -21,30 +23,53 @@ impl Display for AussagenFunktion {
 }
 
 impl AussagenFunktion {
-    pub fn get_keys(&self) -> HashSet<&String> {
+    pub fn get_keys<'a>(&'a self, kontext: &'a FormelKontext) -> HashSet<&String> {
         match self {
-            AussagenFunktion::VARIABEL(key) => HashSet::from([key]),
+            AussagenFunktion::VARIABEL(key) => {
+                if kontext.contains_funktion(key) {
+                    return kontext.funktionen.get(key).unwrap().get_keys(kontext);
+                }
+                HashSet::from([key])
+            },
             AussagenFunktion::TOP() | AussagenFunktion::BOTTOM() => HashSet::new(),
-            AussagenFunktion::NOT(funktion) => funktion.get_keys(),
-            AussagenFunktion::AND(funktion, funktion2)
-            | AussagenFunktion::OR(funktion, funktion2) => {
-                let mut set = funktion.get_keys();
-                set.extend(&funktion2.get_keys());
+            AussagenFunktion::NOT(funktion) => funktion.get_keys(kontext),
+            AussagenFunktion::AND(funktion)
+            | AussagenFunktion::OR(funktion) => {
+                let mut set = HashSet::new();
+                for ele in funktion {
+                    set.extend(&ele.get_keys(kontext));
+                }
                 set
             }
         }
     }
-    pub fn result(&self, belegung: &HashMap<String, bool>, default: bool) -> bool {
+
+    pub fn result(&self, kontext: &FormelKontext, belegung: &HashMap<String, bool>, default: bool) -> bool {
         match self {
-            AussagenFunktion::VARIABEL(key) => *belegung.get(key).unwrap_or(&default),
+            AussagenFunktion::VARIABEL(key) => {
+                if kontext.contains_funktion(key) {
+                    kontext.funktionen.get(key).unwrap().result(kontext, belegung, default)
+                }else{
+                    *belegung.get(key).unwrap_or(&default)
+                }
+            },
             AussagenFunktion::TOP() => true,
             AussagenFunktion::BOTTOM() => false,
-            AussagenFunktion::NOT(funktion) => !funktion.result(belegung, default),
-            AussagenFunktion::AND(funktion, funktion2) => {
-                funktion.result(belegung, default) & funktion2.result(belegung, default)
+            AussagenFunktion::NOT(funktion) => !funktion.result(kontext,belegung, default),
+            AussagenFunktion::AND(funktion) => 
+            {   
+                let mut res = true;
+                for ele in funktion {
+                    res &= ele.result(kontext, belegung, default);
+                }
+                res
             }
-            AussagenFunktion::OR(funktion, funktion2) => {
-                funktion.result(belegung, default) || funktion2.result(belegung, default)
+            AussagenFunktion::OR(funktion) => {
+                let mut res = false;
+                for ele in funktion {
+                    res |= ele.result(kontext, belegung, default);
+                }
+                res
             }
         }
     }
@@ -55,15 +80,33 @@ impl AussagenFunktion {
             AussagenFunktion::TOP() => String::from("true"),
             AussagenFunktion::BOTTOM() => String::from("false"),
             AussagenFunktion::NOT(funktion) => format!("-{}", funktion.to_ascii_string()),
-            AussagenFunktion::AND(funktion, funktion2) => format!(
-                "({} & {})",
-                funktion.to_ascii_string(),
-                funktion2.to_ascii_string()
+            AussagenFunktion::AND(funktion) => format!(
+                "({})",
+                {
+                    let mut s = String::new();
+                    for ele in funktion {
+                        if s.is_empty() {
+                            s = ele.to_ascii_string();
+                        }else {
+                            s = format!("{} & {}", s, ele.to_ascii_string());
+                        }
+                    }
+                    s    
+                }
             ),
-            AussagenFunktion::OR(funktion, funktion2) => format!(
-                "({} | {})",
-                funktion.to_ascii_string(),
-                funktion2.to_ascii_string()
+            AussagenFunktion::OR(funktion) =>format!(
+                "({})",
+                {
+                    let mut s = String::new();
+                    for ele in funktion {
+                        if s.is_empty() {
+                            s = ele.to_ascii_string();
+                        }else {
+                            s = format!("{} | {}", s, ele.to_ascii_string());
+                        }
+                    }
+                    s    
+                }
             ),
         }
     }
@@ -73,54 +116,36 @@ impl AussagenFunktion {
             AussagenFunktion::TOP() => String::from("⊤"),
             AussagenFunktion::BOTTOM() => String::from("⊥"),
             AussagenFunktion::NOT(funktion) => format!("¬{}", funktion.to_utf_string()),
-            AussagenFunktion::AND(funktion, funktion2) => format!(
-                "({} ⋀ {})",
-                funktion.to_utf_string(),
-                funktion2.to_utf_string()
+            AussagenFunktion::AND(funktion) => format!(
+                "({})",
+                {
+                    let mut s = String::new();
+                    for ele in funktion {
+                        if s.is_empty() {
+                            s = ele.to_utf_string();
+                        }else {
+                            s = format!("{} ⋀ {}", s, ele.to_utf_string());
+                        }
+                    }
+                    s    
+                }
             ),
-            AussagenFunktion::OR(funktion, funktion2) => format!(
-                "({} ⋁ {})",
-                funktion.to_utf_string(),
-                funktion2.to_utf_string()
+            AussagenFunktion::OR(funktion) =>format!(
+                "({})",
+                {
+                    let mut s = String::new();
+                    for ele in funktion {
+                        if s.is_empty() {
+                            s = ele.to_utf_string();
+                        }else {
+                            s = format!("{} ⋁ {}", s, ele.to_utf_string());
+                        }
+                    }
+                    s    
+                }
             ),
         }
     }
-
-    // pub fn clone(&self) -> AussagenFunktion {
-    //     match self {
-    //         AussagenFunktion::VARIABEL(key) => AussagenFunktion::VARIABEL(key.clone()),
-    //         AussagenFunktion::TOP() => AussagenFunktion::TOP(),
-    //         AussagenFunktion::BOTTOM() => AussagenFunktion::BOTTOM(),
-    //         AussagenFunktion::NOT(funk) => AussagenFunktion::NOT(Box::new(funk.clone())),
-    //         AussagenFunktion::AND(funk, funk2) => todo!(),
-    //         AussagenFunktion::OR(funk, funk2) => todo!(),
-    //     }
-    // }
-
-    // fn is_equivalent(&self, belegbar: &dyn Funktion) -> bool {
-    //
-    //     let union = self.get_keys()
-    //         .union(&belegbar.get_keys())
-    //         .collect();
-    //     self.is_equivalent(belegbar,union, &mut HashMap::new())
-    // }
-    // fn is_equivalent_internal(&self, belegbar: &dyn Funktion, restliche_keys: &mut HashSet<&String, RandomState>, map: &mut HashMap<&String, bool>) -> bool {
-    //     let mut iter = restliche_keys.iter();
-    //     let option = iter.next();
-    //     match option {
-    //         None => {
-    //             self.result(map, false) == belegbar.result(map, false)
-    //         }
-    //         Some(key) => {
-    //             restliche_keys.remove(key);
-    //             if !self.is_equivalent(belegbar, restliche_keys, map) {
-    //                 false
-    //             }
-    //             map.insert(key,true);
-    //             self.is_equivalent(belegbar, restliche_keys, map)
-    //         }
-    //     }
-    // }
 }
 
 impl Clone for AussagenFunktion {
@@ -130,22 +155,55 @@ impl Clone for AussagenFunktion {
             Self::TOP() => Self::TOP(),
             Self::BOTTOM() => Self::BOTTOM(),
             Self::NOT(arg0) => Self::NOT(arg0.clone()),
-            Self::AND(arg0, arg1) => Self::AND(arg0.clone(), arg1.clone()),
-            Self::OR(arg0, arg1) => Self::OR(arg0.clone(), arg1.clone()),
+            Self::AND(arg0) => Self::AND(arg0.clone()),
+            Self::OR(arg0) => Self::OR(arg0.clone()),
         }
     }
 }
 
 #[derive(Debug)]
+pub struct FormelKontext {
+    pub funktionen: HashMap<String, AussagenFunktion>,
+    pub belegung: Vec<Belegung>,
+}
+
+impl FormelKontext {
+    pub fn contains_funktion(&self, key: &String) -> bool {
+        self.funktionen.contains_key(key)
+    }
+
+    pub fn new() -> FormelKontext {
+        FormelKontext { funktionen: HashMap::new(), belegung: Vec::new() }
+    }
+
+    pub fn get_key(&self, value: &AussagenFunktion) -> Option<String> {
+        for ele in &self.funktionen {
+            if ele.1.eq(value) {return Some(ele.0.clone());}
+        }
+        None
+    }
+
+    pub fn get_keys(&self, formeln: &Vec<&AussagenFunktion>) -> Vec<String> {
+        let mut v = Vec::new();
+        for ele in &self.funktionen {
+            if formeln.contains(&ele.1)  {
+                v.push(ele.0.clone());
+            }
+        }
+        v
+    }
+}
+
+#[derive(Debug)]
 pub struct Belegung {
-    pub funktionen: Vec<AussagenFunktion>,
     pub werte: HashMap<String, bool>,
-    pub ergebnis: Vec<bool>,
+    pub ergebnisse: HashMap<String, bool>,
 }
 
 #[derive(Debug)]
 pub struct Wahrheitstabelle {
     pub belegungen: Vec<Belegung>,
+    pub reihenfolge: Vec<String>,
 }
 
 impl Wahrheitstabelle {
@@ -154,6 +212,7 @@ impl Wahrheitstabelle {
             self.belegungen.push(belegung);
         }
     }
+
 }
 
 impl Display for Wahrheitstabelle {
@@ -168,13 +227,13 @@ impl Display for Wahrheitstabelle {
             write!(f, "  {}  |", ele.0)?;
         }
 
-        let mut pattern_map:HashMap<&AussagenFunktion, String> = HashMap::new();
-        for ele in &belegung.funktionen {
-            let uft_string = ele.to_utf_string();
-            write!(f, " {} |", uft_string)?;
-            let len = uft_string.len();
+        let mut pattern_map:HashMap<String, String> = HashMap::new();
+        for ele in &self.reihenfolge {
+            write!(f, " {} |", ele)?;
+            let len = ele.len();
             let mut pattern = String::with_capacity(len);
-            let spaces_len = (len - 2) / 2;
+            let spaces_len = (len) / 2;
+            pattern.push(' ');
             for x in 0..spaces_len {
                 pattern.push(' ');
             }
@@ -183,10 +242,13 @@ impl Display for Wahrheitstabelle {
                 pattern.push(' ');
             }
             pattern.push('|');
-            pattern_map.insert(ele, pattern);
+            pattern_map.insert(ele.clone(), pattern);
         }
         writeln!(f, "")?;
 
+
+        let def = String::from(" {} |");
+        
         for ele in &self.belegungen {
             for ele in &ele.werte {
                 if *ele.1 {
@@ -195,24 +257,20 @@ impl Display for Wahrheitstabelle {
                     write!(f, "  0  |")?;
                 }
             }
-            let mut iterator = ele.ergebnis.iter();
-            for ele in &ele.funktionen {
-                match &iterator.next() {
-                    Some(erg) =>{
-                        let pattern = pattern_map.get(&ele).unwrap().as_str();
-                        let filled_pattern;
-                        if **erg {
-                            filled_pattern = pattern.replace("{}", "1");
-                        }else {
-                            filled_pattern = pattern.replace("{}", "0");
-                        }
-                        write!(f, "{}", filled_pattern)?;
-                    },
-                    None => {
-                        let pattern = pattern_map.get(&ele).unwrap().as_str();
-                        write!(f,"{}",pattern.replace("{}", "?"))?;
-                    },
-                }
+            for erg in &self.reihenfolge {
+                let pattern = pattern_map.get(erg).unwrap_or(&def);
+
+                let filled_pattern;
+                let get = (&ele.ergebnisse).get(erg);
+                if get.is_none() {
+                    return Err(std::fmt::Error{});
+                }else {
+                if *get.unwrap() {
+                    filled_pattern = pattern.replace("{}", "1");
+                }else {
+                    filled_pattern = pattern.replace("{}", "0");
+                }}
+                write!(f, "{}", filled_pattern)?;
             }
             writeln!(f,"")?;
         }
