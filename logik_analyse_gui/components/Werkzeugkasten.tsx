@@ -8,7 +8,7 @@ function Werkzeugkasten(props: any) {
     return(
     <Stack className='formel'>
         <Button className='button-text' onClick={props.onTabelle}>Tabelle</Button>
-        <Button className='button-text'>Equivalenz</Button>
+        <Button className='button-text' onClick={props.onAequivalenz}>Äquivalenz</Button>
     </Stack>
     );
 }

@@ -103,12 +103,12 @@ pub fn parseFunktion(eingabe: &String) -> Result<Box<AussagenFunktion>, String> 
                 }
             },
         }
-        printTree(&tree, None);
-        println!(
-            "after {} => {:?}",
-            x,
-            tree.get(current_node_id).unwrap().data().option
-        );
+        // printTree(&tree, None);
+        // println!(
+        //     "after {} => {:?}",
+        //     x,
+        //     tree.get(current_node_id).unwrap().data().option
+        // );
     }
 
     printTree(&tree, None);

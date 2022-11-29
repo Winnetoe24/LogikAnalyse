@@ -17,18 +17,18 @@ use LogikLib::aussagen::{
     structures::{AussagenFunktion, Wahrheitstabelle},
 };
 struct MyState {
-    kontext: FormelKontext
+    kontext: FormelKontext,
 }
 
 impl MyState {
     fn insert(&mut self, name: String, funktion: Box<AussagenFunktion>) {
         self.kontext.funktionen.insert(name, *funktion);
-    } 
+    }
 
     fn get(&self, name: String) -> Option<&AussagenFunktion> {
         self.kontext.funktionen.get(&name)
     }
-} 
+}
 
 struct Mapping {
     name: String,
@@ -36,7 +36,9 @@ struct Mapping {
 }
 
 fn main() {
-    let mut state = MyState { kontext: FormelKontext::new() };
+    let mut state = MyState {
+        kontext: FormelKontext::new(),
+    };
     tauri::Builder::default()
         .manage(Mutex::from(state))
         .invoke_handler(tauri::generate_handler![
@@ -44,7 +46,8 @@ fn main() {
             renderFormel,
             get_wahrheitstabelle_cmd,
             getFormel,
-            check_formel
+            check_formel,
+            is_aequivalent
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
@@ -73,17 +76,16 @@ fn getFormel(state: tauri::State<'_, Mutex<MyState>>, name: &str, is_utf: bool) 
         Err(_) => String::from(""),
     }
 }
-    
 
 #[tauri::command]
 async fn check_formel(
-        mut state: tauri::State<'_, Mutex<MyState>>,
-        input: &str,
-        ) -> Result<String, String> {
+    mut state: tauri::State<'_, Mutex<MyState>>,
+    input: &str,
+) -> Result<String, String> {
     let funktion = parseFunktion(&String::from(input))?;
     let utf = funktion.to_utf_string();
-    Ok(utf) 
-} 
+    Ok(utf)
+}
 #[tauri::command]
 async fn renderFormel(
     mut state: tauri::State<'_, Mutex<MyState>>,
@@ -105,7 +107,7 @@ async fn renderFormel(
 }
 
 #[tauri::command]
-async fn get_wahrheitstabelle_cmd( 
+async fn get_wahrheitstabelle_cmd(
     mut state: tauri::State<'_, Mutex<MyState>>,
     namen: Vec<String>,
 ) -> Result<String, String> {
@@ -118,10 +120,13 @@ async fn get_wahrheitstabelle_cmd(
                 if func.is_some() {
                     let func = func.unwrap();
                     formeln.push(func);
-                } 
+                }
             }
 
-            Ok(format!("{}", aussagen::get_wahrheitstabelle(&state.kontext, formeln)))
+            Ok(format!(
+                "{}",
+                aussagen::get_wahrheitstabelle(&state.kontext, formeln)
+            ))
         }
         Err(e) => {
             let r = e.get_ref();
@@ -131,3 +136,72 @@ async fn get_wahrheitstabelle_cmd(
     }
 }
 
+#[tauri::command]
+async fn is_aequivalent(
+    mut state: tauri::State<'_, Mutex<MyState>>,
+    namen: Vec<String>,
+) -> Result<String, String> {
+    println!("is_aequivalent");
+    let mut formeln = Vec::new();
+
+    match state.lock() {
+        Ok(state) => {
+            let mut map = HashMap::new();
+            for ele in &namen {
+                let func = state.get(ele.clone());
+                if func.is_some() {
+                    let func = func.unwrap();
+                    formeln.push(func);
+                    for name2 in &namen {
+                        let func = state.get(name2.clone());
+                        if func.is_some() {
+                                if !formeln.contains(&func.unwrap()) {
+                                map.insert(format!("{} ≣ {}", ele, name2), true);
+                            }
+                        }
+                    }
+                }
+            }
+
+            let tabelle = aussagen::get_wahrheitstabelle(&state.kontext, formeln);
+            for ele in tabelle.belegungen {
+                for tupel in &ele.ergebnisse {
+                    for tupel2 in &ele.ergebnisse {
+                        if map.contains_key(&format!("{} ≣ {}", tupel.0, tupel2.0)) {
+                            if (tupel.1 != tupel2.1) {
+                                map.insert(format!("{} ≣ {}", tupel.0, tupel2.0), false);
+                            }
+                        }
+                    }
+                }
+            }
+
+            let mut s = String::new();
+            for ele in map {
+                if s.is_empty() {
+                    s = format!("{}", ele.0.replace("≣", {
+                        if ele.1 {
+                            "≡"
+                        }else {
+                            "≢"
+                        }
+                    }));
+                } else {
+                    s = format!("{}\n{}", s, ele.0.replace("≣", {
+                        if ele.1 {
+                            "≡"
+                        }else {
+                            "≢"
+                        }
+                    }));
+                }
+            }
+            Ok(s)
+        }
+        Err(e) => {
+            let r = e.get_ref();
+            drop(r);
+            return Err(e.to_string());
+        }
+    }
+}

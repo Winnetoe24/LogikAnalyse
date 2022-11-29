@@ -29,7 +29,8 @@ const Input: FunctionComponent<InputProps> = (props: InputProps) => {
 
 export interface FormelProps {
     name: string;
-    selection: [boolean, Dispatch<SetStateAction<boolean>>];
+     i: number;
+    selection: [boolean[], Dispatch<SetStateAction<boolean[]>>];
 }
 
 
@@ -116,10 +117,11 @@ function Formel(props: FormelProps): JSX.Element{
     }
 
     const handleChecked = (event: ChangeEvent) => {
-       props.selection[1](!props.selection[0]);
+        let ar = props.selection[0];
+        ar[props.i] = !ar[props.i]; 
+       props.selection[1](ar);
     }
 
-    const isSelected = () => {return false;}
 
     return (
 
