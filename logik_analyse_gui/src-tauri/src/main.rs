@@ -13,7 +13,7 @@ use lazy_static::lazy_static;
 use tauri::utils::resources::ResourcePaths;
 use LogikLib::aussagen::{self, structures::FormelKontext};
 use LogikLib::aussagen::{
-    parseFunktion,
+    parse_function,
     structures::{AussagenFunktion, Wahrheitstabelle},
 };
 struct MyState {
@@ -82,7 +82,7 @@ async fn check_formel(
     mut state: tauri::State<'_, Mutex<MyState>>,
     input: &str,
 ) -> Result<String, String> {
-    let funktion = parseFunktion(&String::from(input))?;
+    let funktion = parse_function(&String::from(input))?;
     let utf = funktion.to_utf_string();
     Ok(utf)
 }
@@ -92,7 +92,7 @@ async fn renderFormel(
     name: &str,
     input: &str,
 ) -> Result<String, String> {
-    let funktion = parseFunktion(&String::from(input))?;
+    let funktion = parse_function(&String::from(input))?;
     let utf = funktion.to_utf_string();
     match state.lock() {
         Ok(mut state) => {

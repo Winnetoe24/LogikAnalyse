@@ -1,8 +1,6 @@
-use std::collections::hash_map::RandomState;
-use std::collections::hash_set::Union;
+
 use std::collections::{HashMap, HashSet};
 use std::fmt::{Display, Formatter};
-use std::ptr::addr_of_mut;
 
 
 
@@ -77,8 +75,8 @@ impl AussagenFunktion {
     pub fn to_ascii_string(&self) -> String {
         match self {
             AussagenFunktion::VARIABEL(key) => key.clone(),
-            AussagenFunktion::TOP() => String::from("true"),
-            AussagenFunktion::BOTTOM() => String::from("false"),
+            AussagenFunktion::TOP() => String::from("t"),
+            AussagenFunktion::BOTTOM() => String::from("f"),
             AussagenFunktion::NOT(funktion) => format!("-{}", funktion.to_ascii_string()),
             AussagenFunktion::AND(funktion) => format!(
                 "({})",
@@ -234,11 +232,11 @@ impl Display for Wahrheitstabelle {
             let mut pattern = String::with_capacity(len);
             let spaces_len = (len) / 2;
             pattern.push(' ');
-            for x in 0..spaces_len {
+            for _x in 0..spaces_len {
                 pattern.push(' ');
             }
             pattern.push_str("{}");
-            for x in 0..spaces_len {
+            for _x in 0..spaces_len {
                 pattern.push(' ');
             }
             pattern.push('|');

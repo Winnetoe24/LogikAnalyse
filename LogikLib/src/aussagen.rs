@@ -1,14 +1,8 @@
 use crate::aussagen::ParseOption::{AND, NOTHING, OR, UNSPECIFIED, VARIABLE};
+use crate::aussagen::ParseError::*;
 use slab_tree::{NodeId, Tree, TreeBuilder};
-use std::any::Any;
-use std::collections::{HashMap, HashSet};
-use std::env::current_exe;
-use std::f32::consts::E;
-use std::fs::remove_file;
-use std::mem::{needs_drop, transmute};
-use std::ops::Add;
-use std::process::Termination;
-use std::ptr::addr_of_mut;
+
+use std::collections::{HashSet, HashMap};
 
 use self::structures::{AussagenFunktion, Belegung, FormelKontext, Wahrheitstabelle};
 
@@ -31,13 +25,24 @@ pub enum ParseOption {
     OR(),
 }
 
-/// X: if (is_unspecified) set
-pub fn parseFunktion(eingabe: &String) -> Result<Box<AussagenFunktion>, String> {
-    let mut parent_funktion = Parsed { option: UNSPECIFIED() };
+#[derive(Debug, PartialEq)]
+pub enum ParseError {
+    ToNone,
+    NoCurrent,
+    NoParent,
+    VariableAlreadyClosed,
+    NoVariableToClose,
+    NoRoot,
+    CurrentIsNotRoot,
+}
+
+pub fn parse_function(eingabe: &str) -> Result<Box<AussagenFunktion>, ParseError> {
+    let parent_funktion = Parsed {
+        option: UNSPECIFIED(),
+    };
     let mut tree: Tree<Parsed> = TreeBuilder::new().with_root(parent_funktion).build();
 
     let mut current_node_id = tree.root_id().unwrap();
-    let mut is_move_up: bool = false;
     for x in eingabe.chars() {
         //Close and move up at end of Var
         match x {
@@ -50,7 +55,6 @@ pub fn parseFunktion(eingabe: &String) -> Result<Box<AussagenFunktion>, String> 
             _ => {}
         }
 
-        
         match x {
             '|' | '⋁' => {
                 set_option(&mut tree, current_node_id, OR())?;
@@ -72,18 +76,22 @@ pub fn parseFunktion(eingabe: &String) -> Result<Box<AussagenFunktion>, String> 
                 current_node_id = append_unspecified_and_move_down(&mut tree, current_node_id)?;
             }
             't' | '⊤' => {
-                current_node_id = set_or_append_option(&mut tree, current_node_id, ParseOption::TOP())?;
+                current_node_id =
+                    set_or_append_option(&mut tree, current_node_id, ParseOption::TOP())?;
                 if has_parent(&mut tree, current_node_id)? {
                     current_node_id = move_up(&mut tree, current_node_id)?;
                 }
             }
             'f' | '⊥' => {
-                current_node_id = set_or_append_option(&mut tree, current_node_id, ParseOption::BOTTOM())?;
+                current_node_id =
+                    set_or_append_option(&mut tree, current_node_id, ParseOption::BOTTOM())?;
                 if has_parent(&mut tree, current_node_id)? {
                     current_node_id = move_up(&mut tree, current_node_id)?;
-                }            }
+                }
+            }
             '-' | '¬' => {
-                current_node_id = set_or_append_option(&mut tree, current_node_id, ParseOption::NOT())?;
+                current_node_id =
+                    set_or_append_option(&mut tree, current_node_id, ParseOption::NOT())?;
                 current_node_id = append_unspecified_and_move_down(&mut tree, current_node_id)?;
             }
             ' ' => {}
@@ -106,44 +114,52 @@ pub fn parseFunktion(eingabe: &String) -> Result<Box<AussagenFunktion>, String> 
                 }
             },
         }
-        // printTree(&tree, None);
-        // println!(
-        //     "after {} => {:?}",
-        //     x,
-        //     tree.get(current_node_id).unwrap().data().option
-        // );
+        print_tree(&tree, None);
+        println!(
+            "after {} => {:?}",
+            x,
+            tree.get(current_node_id).unwrap().data().option
+        );
     }
 
-    printTree(&tree, None);
+    print_tree(&tree, None);
     let stru = to_structures(&tree, tree.root_id().unwrap());
     if stru.is_none() {
-        Err(String::from("Parse to None"))
-    }else {
+        Err(ToNone)
+    } else {
         Ok(stru.unwrap())
     }
 }
 
-fn move_up(tree: &mut Tree<Parsed>, current_node_id: NodeId) -> Result<NodeId, String> {
+fn move_up(tree: &mut Tree<Parsed>, current_node_id: NodeId) -> Result<NodeId, ParseError> {
     let current = tree.get(current_node_id);
     if current.is_none() {
-        return Err(String::from("Err no Current"));
+        return Err(NoCurrent);
     }
     let current = current.unwrap();
     let parent = current.parent();
     if parent.is_none() {
-        return Err(String::from("Err no Parent"));
+        return Err(NoParent);
     }
     let parent = parent.unwrap();
+    println!("parent {:?}", parent.data().option);
+
     match parent.data().option {
-        ParseOption::NOT() => move_up(tree, parent.node_id()),
-        _ =>  Ok(parent.node_id())
+        ParseOption::NOT() => {
+            let parent_id = parent.node_id();
+            match move_up(tree, parent_id.clone()) {
+                Ok(node_id) => Ok(node_id),
+                Err(_) => Ok(parent_id),
+            }
+        }
+        _ => Ok(parent.node_id()),
     }
 }
 
 fn append_unspecified_and_move_down(
     tree: &mut Tree<Parsed>,
     current_node_id: NodeId,
-) -> Result<NodeId, String> {
+) -> Result<NodeId, ParseError> {
     append_and_move_down(tree, current_node_id, UNSPECIFIED())
 }
 
@@ -151,28 +167,28 @@ fn append_and_move_down(
     tree: &mut Tree<Parsed>,
     current_node_id: NodeId,
     option: ParseOption,
-) -> Result<NodeId, String> {
+) -> Result<NodeId, ParseError> {
     let current = tree.get_mut(current_node_id);
     if current.is_none() {
-        return Err(String::from("Err no Current"));
+        return Err(NoCurrent);
     }
     let mut current = current.unwrap();
     Ok(current.append(Parsed { option: option }).node_id())
 }
 
-fn is_unspecified(tree: &mut Tree<Parsed>, current_node_id: NodeId) -> Result<bool, String> {
+fn is_unspecified(tree: &mut Tree<Parsed>, current_node_id: NodeId) -> Result<bool, ParseError> {
     let current = tree.get(current_node_id);
     if current.is_none() {
-        return Err(String::from("Err no Current"));
+        return Err(NoCurrent);
     }
     let current = current.unwrap();
     Ok(current.data().option == UNSPECIFIED())
 }
 
-fn is_unclosed_variable(tree: &mut Tree<Parsed>, current_node_id: NodeId) -> Result<bool, String> {
+fn is_unclosed_variable(tree: &mut Tree<Parsed>, current_node_id: NodeId) -> Result<bool, ParseError> {
     let current = tree.get(current_node_id);
     if current.is_none() {
-        return Err(String::from("Err no Current"));
+        return Err(NoCurrent);
     }
     let current = current.unwrap();
     match current.data().option {
@@ -181,21 +197,21 @@ fn is_unclosed_variable(tree: &mut Tree<Parsed>, current_node_id: NodeId) -> Res
     }
 }
 
-fn close_var(tree: &mut Tree<Parsed>, current_node_id: NodeId) -> Result<(), String> {
+fn close_var(tree: &mut Tree<Parsed>, current_node_id: NodeId) -> Result<(), ParseError> {
     let current = tree.get_mut(current_node_id);
     if current.is_none() {
-        return Err(String::from("Err no Current"));
+        return Err(NoCurrent);
     }
     let mut current = current.unwrap();
     match &current.data().option {
         VARIABLE(name, is_closed) => {
             if *is_closed {
-                return Err(String::from("Err Var already closed"));
+                return Err(VariableAlreadyClosed);
             }
             current.data().option = VARIABLE(name.clone(), true);
             Ok(())
         }
-        _ => Err(String::from("Err no Variable to close")),
+        _ => Err(NoVariableToClose),
     }
 }
 
@@ -203,10 +219,10 @@ fn set_or_append_option(
     tree: &mut Tree<Parsed>,
     current_node_id: NodeId,
     option: ParseOption,
-) -> Result<NodeId, String> {
+) -> Result<NodeId, ParseError> {
     let current = tree.get_mut(current_node_id);
     if current.is_none() {
-        return Err(String::from("Err no Current"));
+        return Err(NoCurrent);
     }
     let mut current = current.unwrap();
     match current.data().option {
@@ -214,7 +230,7 @@ fn set_or_append_option(
             set_option(tree, current_node_id, option)?;
             Ok(current_node_id)
         }
-        _ => append_and_move_down(tree, current_node_id, option)
+        _ => append_and_move_down(tree, current_node_id, option),
     }
 }
 
@@ -222,20 +238,20 @@ fn set_option(
     tree: &mut Tree<Parsed>,
     current_node_id: NodeId,
     option: ParseOption,
-) -> Result<(), String> {
+) -> Result<(), ParseError> {
     let current = tree.get_mut(current_node_id);
     if current.is_none() {
-        return Err(String::from("Err no Current"));
+        return Err(NoCurrent);
     }
     let mut current = current.unwrap();
     current.data().option = option;
     Ok(())
 }
 
-fn has_parent(tree: &mut Tree<Parsed>, current_node_id: NodeId) -> Result<bool, String> {
+fn has_parent(tree: &mut Tree<Parsed>, current_node_id: NodeId) -> Result<bool, ParseError> {
     let current = tree.get(current_node_id);
     if current.is_none() {
-        return Err(String::from("Err no Current"));
+        return Err(NoCurrent);
     }
     let current = current.unwrap();
     Ok(current.parent().is_some())
@@ -244,14 +260,14 @@ fn has_parent(tree: &mut Tree<Parsed>, current_node_id: NodeId) -> Result<bool, 
 fn add_unspecified_root_and_move_up(
     tree: &mut Tree<Parsed>,
     current_node_id: NodeId,
-) -> Result<NodeId, String> {
+) -> Result<NodeId, ParseError> {
     let root_id = tree.root_id();
     if root_id.is_none() {
-        return Err(String::from("Err no Root"));
+        return Err(NoRoot);
     }
     let root_id = root_id.unwrap();
     if current_node_id != root_id {
-        return Err(String::from("Err Current is not Root"));
+        return Err(CurrentIsNotRoot);
     }
 
     let new_root = tree.set_root(Parsed {
@@ -348,56 +364,8 @@ mod test {
     }
 }
 
-fn specify_parent(
-    tree: &mut Tree<Parsed>,
-    current_node_id: NodeId,
-    option: ParseOption,
-) -> Result<NodeId, String> {
-    if tree.get(current_node_id).is_none() {
-        return Err(String::from("No Current"));
-    }
-    if tree.get(current_node_id).unwrap().parent().is_none() {
-        let mut current = tree.get_mut(current_node_id).unwrap();
-        // return Ok(current.append(Parsed { option: option }).node_id());
-        match &current.data().option {
-            VARIABLE(name, _) => {
-                println!("replace parent {}", name);
-                let new_name = name.clone();
-                let new_closed = true;
-                let new_id = &current
-                    .append(Parsed {
-                        option: VARIABLE(new_name, new_closed),
-                    })
-                    .node_id();
-                current.data().option = option;
-                return Ok(*new_id);
-            }
-            _ => {
-                return Ok(current.append(Parsed { option: option }).node_id());
-            }
-        }
-    }
-
-    let parent_id = tree
-        .get(current_node_id)
-        .unwrap()
-        .parent()
-        .unwrap()
-        .node_id();
-    let mut parent = tree.get_mut(parent_id).unwrap();
-    match &parent.data().option {
-        UNSPECIFIED() => {
-            parent.data().option = option;
-            return Ok(parent_id);
-        }
-
-        _ => specify_parent(tree, parent_id, option),
-    }
-}
-
 fn to_structures(slab_tree: &Tree<Parsed>, node_id: NodeId) -> Option<Box<AussagenFunktion>> {
     match &slab_tree.get(node_id).unwrap().data().option {
-    
         VARIABLE(name, _) => Some(Box::new(AussagenFunktion::VARIABEL(name.clone()))),
         ParseOption::TOP() => Some(Box::new(AussagenFunktion::TOP())),
         ParseOption::BOTTOM() => Some(Box::new(AussagenFunktion::BOTTOM())),
@@ -409,15 +377,15 @@ fn to_structures(slab_tree: &Tree<Parsed>, node_id: NodeId) -> Option<Box<Aussag
                 .next()
                 .unwrap()
                 .node_id();
-                let child = to_structures(slab_tree, children_id);
-                if child.is_none() {
-                    None
-                }else {
-                    Some(Box::new(AussagenFunktion::NOT(child.unwrap())))
-                }
+            let child = to_structures(slab_tree, children_id);
+            if child.is_none() {
+                None
+            } else {
+                Some(Box::new(AussagenFunktion::NOT(child.unwrap())))
+            }
         }
         AND() => {
-            let mut siblings = slab_tree.get(node_id).unwrap().children();
+            let siblings = slab_tree.get(node_id).unwrap().children();
             let mut vector = vec![];
             for ele in siblings {
                 let option = to_structures(slab_tree, ele.node_id());
@@ -426,12 +394,10 @@ fn to_structures(slab_tree: &Tree<Parsed>, node_id: NodeId) -> Option<Box<Aussag
                 }
             }
 
-            Some(Box::new(AussagenFunktion::AND(
-                vector
-            )))
+            Some(Box::new(AussagenFunktion::AND(vector)))
         }
         OR() => {
-            let mut siblings = slab_tree.get(node_id).unwrap().children();
+            let siblings = slab_tree.get(node_id).unwrap().children();
             let mut vector = vec![];
             for ele in siblings {
                 let option = to_structures(slab_tree, ele.node_id());
@@ -440,11 +406,12 @@ fn to_structures(slab_tree: &Tree<Parsed>, node_id: NodeId) -> Option<Box<Aussag
                 }
             }
 
-            Some(Box::new(AussagenFunktion::OR(
-                vector
-            )))
+            Some(Box::new(AussagenFunktion::OR(vector)))
         }
         NOTHING() | UNSPECIFIED() => {
+            if slab_tree.get(node_id).unwrap().children().next().is_none() {
+                return None;
+            }
             let children_id = slab_tree
                 .get(node_id)
                 .unwrap()
@@ -457,23 +424,23 @@ fn to_structures(slab_tree: &Tree<Parsed>, node_id: NodeId) -> Option<Box<Aussag
     }
 }
 
-fn printTree(slab_tree: &Tree<Parsed>, node_id_option: Option<NodeId>) {
+fn print_tree(slab_tree: &Tree<Parsed>, node_id_option: Option<NodeId>) {
     match node_id_option {
         None => {
             println!();
             let id = slab_tree.root_id();
-            printTree(slab_tree, id);
+            print_tree(slab_tree, id);
         }
         Some(node_id) => {
             let node_ref = slab_tree.get(node_id).unwrap();
-            println!("{:?} -> ", slab_tree.get(node_id).unwrap().data().option);            
+            println!("{:?} -> ", slab_tree.get(node_id).unwrap().data().option);
             for node in node_ref.children() {
                 println!("{:?}", node.data().option);
             }
 
             println!("-----------");
             for node in node_ref.children() {
-                printTree(slab_tree, Some(node.node_id()))
+                print_tree(slab_tree, Some(node.node_id()))
             }
         }
     }

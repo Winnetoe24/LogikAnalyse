@@ -58,10 +58,10 @@ function Formel(props: FormelProps): JSX.Element{
                 });
     }
 
-    const checkFormel = () => {
-        console.log("check start");
+    const checkFormel = (neueEingabe: string) => {
+        console.log("check start"+eingabe); 
         isClient &&
-            invoke('check_formel', { name: props.name, input: eingabe })
+            invoke('check_formel', { name: props.name, input: neueEingabe })
                 .then((formel: any) => {
                     console.log("check ok");
                     setFormelOk(true);
@@ -80,15 +80,16 @@ function Formel(props: FormelProps): JSX.Element{
     const handleFocus = (event: React.FocusEvent<HTMLInputElement>) => {
         renderFormel();
     }
+    
     const getFormel = () => {
         getFormelBool(isUTF);
     }
+
     const getFormelBool = (is_utf: boolean) => {
         isClient &&
             isFormelOk &&
             invoke('getFormel', { name: props.name, is_utf: is_utf })
                 .then((formel: any) => {
-                    //        setValue(formel);
                     console.log("formel:" + formel + " utf:" + isUTF);
                     setEingabe(formel);
                 })
@@ -113,7 +114,7 @@ function Formel(props: FormelProps): JSX.Element{
         setFormelWrong(false);
         console.log("change value:" + event.target.value);
         setEingabe(event.target.value);
-        checkFormel();
+        checkFormel(event.target.value);
     }
 
     const handleChecked = (event: ChangeEvent) => {

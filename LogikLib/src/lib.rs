@@ -8,11 +8,10 @@ pub fn add(left: usize, right: usize) -> usize {
 mod tests {
     use slab_tree::Tree;
     use std::collections::HashMap;
-    use std::hash::Hash;
 
-    use crate::aussagen::structures::{FormelKontext, Belegung};
+    use crate::aussagen::structures::{FormelKontext};
     use crate::aussagen::ParseOption::{VARIABLE};
-    use crate::aussagen::{parseFunktion, get_wahrheitstabelle, Parsed, ParseOption};
+    use crate::aussagen::{parse_function, get_wahrheitstabelle, Parsed, ParseOption};
     use crate::aussagen::structures::AussagenFunktion::{*, self};
 
     use super::*;
@@ -49,16 +48,16 @@ mod tests {
         let mut belegung_map = HashMap::new();
         belegung_map.insert(String::from("A"), false);
         belegung_map.insert(String::from("B"), false);
-        assert!(!parseFunktion(&String::from("(A & B)")).expect("parse1").result(&kontext, &belegung_map, false));
+        assert!(!parse_function(&String::from("(A & B)")).expect("parse1").result(&kontext, &belegung_map, false));
         belegung_map.insert(String::from("A"), true);
         belegung_map.insert(String::from("B"), false);
-        assert!(!parseFunktion(&String::from("(A & B)")).expect("parse2").result(&kontext, &belegung_map, false));
+        assert!(!parse_function(&String::from("(A & B)")).expect("parse2").result(&kontext, &belegung_map, false));
         belegung_map.insert(String::from("A"), false);
         belegung_map.insert(String::from("B"), true);
-        assert!(!parseFunktion(&String::from("(A & B)")).expect("parse3").result(&kontext, &belegung_map, false));
+        assert!(!parse_function(&String::from("(A & B)")).expect("parse3").result(&kontext, &belegung_map, false));
         belegung_map.insert(String::from("A"), true);
         belegung_map.insert(String::from("B"), true);
-        assert!(parseFunktion(&String::from("(A & B)")).expect("parse4").result(&kontext, &belegung_map, false));
+        assert!(parse_function(&String::from("(A & B)")).expect("parse4").result(&kontext, &belegung_map, false));
 
 
         test_parse("(F ⋀ C)");
@@ -74,19 +73,19 @@ mod tests {
     }
 
     fn test_parse(formel: &str) {
-        let funktion = parseFunktion(&String::from(formel)).expect("couldnt parse");
+        let funktion = parse_function(&formel).expect("couldnt parse");
         assert_eq!(funktion.to_utf_string(), formel);
     }
 
     fn test_parse_ascii(formel: &str) {
-        let funktion = parseFunktion(&String::from(formel)).expect("couldnt parse");
+        let funktion = parse_function(&formel).expect("couldnt parse");
         assert_eq!(funktion.to_ascii_string(), formel);
     }
 
     #[test]
     fn test_funktion() {
         let belegung = HashMap::from([(String::from("A"), true), (String::from("B"), false), (String::from("C"), false)]) ;
-        let funktion:AussagenFunktion = *parseFunktion(&String::from("(A & ( B | C))")).expect("couldnt parse").to_owned();
+        let funktion:AussagenFunktion = *parse_function(&String::from("(A & ( B | C))")).expect("couldnt parse").to_owned();
         let kontext = FormelKontext { funktionen : HashMap::from([(String::from("phi1"), funktion.clone())]), belegung: vec![] };
         assert!(!funktion.result(&kontext, &belegung, false))
     }
@@ -95,7 +94,7 @@ mod tests {
     fn wahrheitstabelle() {
         let mut kontext = FormelKontext::new();
         
-        let funktion:AussagenFunktion = *parseFunktion(&String::from("(A | (B))")).expect("couldnt parse").to_owned();
+        let funktion:AussagenFunktion = *parse_function(&String::from("(A | (B))")).expect("couldnt parse").to_owned();
         kontext.funktionen.insert(String::from("phi1"), funktion.clone());
 
         let tabelle = get_wahrheitstabelle(&kontext, vec![&funktion]);
@@ -116,7 +115,7 @@ mod tests {
         tree.set_root(Parsed {option: VARIABLE(String::from("1"), false) });
 
         let mut current = tree.root_mut().unwrap();
-        let new_id = &current
+        let _new_id = &current
             .append(Parsed {
                 option: VARIABLE(String::from("2"), false)
             })
@@ -126,6 +125,37 @@ mod tests {
 
         assert_eq!(tree.root().unwrap().data().option, ParseOption::AND());
         assert_eq!(tree.root().unwrap().first_child().unwrap().data().option, VARIABLE(String::from("2"), false));
+    }
+
+    #[test]
+    fn teste_einzel_variable() {
+        let eingabe = String::from("A");
+        let formel = AussagenFunktion::VARIABEL(eingabe.clone());
+
+        let parsed = parse_function(&eingabe).expect("Fehler bei parse");
+        println!("{} {}", &formel, &parsed);
+        assert_eq!(formel, *parsed);
+    }
+
+    #[test]
+    fn teste_einfach_negativ() {
+        let eingabe = String::from("-A");
+        let formel = AussagenFunktion::NOT(Box::from(AussagenFunktion::VARIABEL(String::from("A"))));
+
+        let parsed = parse_function(&eingabe).expect("Fehler bei parse");
+        println!("{} {}", &formel, &parsed);
+        assert_eq!(formel, *parsed);
+    }
+
+    #[test]
+    fn teste_negativ_und() {
+        let eingabe = String::from("-(A & B)");
+        let formel = NOT(Box::from(AND(vec![Box::from(VARIABEL(String::from("A"))), Box::from(VARIABEL(String::from("B")))])));
+        
+        let parsed = parse_function(&eingabe).expect("Fehler bei parse");
+       
+        println!("{} {}", &formel, &parsed);
+        assert_eq!(formel, *parsed);
     }
 
     
