@@ -1,8 +1,8 @@
-use crate::aussagen::ParseOption::{AND, NOTHING, OR, UNSPECIFIED, VARIABLE};
 use crate::aussagen::ParseError::*;
+use crate::aussagen::ParseOption::{AND, NOTHING, OR, UNSPECIFIED, VARIABLE};
 use slab_tree::{NodeId, Tree, TreeBuilder};
 
-use std::collections::{HashSet, HashMap};
+use std::collections::{HashMap, HashSet};
 
 use self::structures::{AussagenFunktion, Belegung, FormelKontext, Wahrheitstabelle};
 
@@ -23,6 +23,12 @@ pub enum ParseOption {
     NOT(),
     AND(),
     OR(),
+}
+
+impl From<ParseError> for String {
+    fn from(e: ParseError) -> Self {
+        format!("{:?}",e)
+    }
 }
 
 #[derive(Debug, PartialEq)]
@@ -114,15 +120,15 @@ pub fn parse_function(eingabe: &str) -> Result<Box<AussagenFunktion>, ParseError
                 }
             },
         }
-        print_tree(&tree, None);
-        println!(
-            "after {} => {:?}",
-            x,
-            tree.get(current_node_id).unwrap().data().option
-        );
+        // print_tree(&tree, None);
+        //println!(
+        //  "after {} => {:?}",
+        //x,
+        //tree.get(current_node_id).unwrap().data().option
+        //);
     }
 
-    print_tree(&tree, None);
+    //print_tree(&tree, None);
     let stru = to_structures(&tree, tree.root_id().unwrap());
     if stru.is_none() {
         Err(ToNone)
@@ -142,7 +148,7 @@ fn move_up(tree: &mut Tree<Parsed>, current_node_id: NodeId) -> Result<NodeId, P
         return Err(NoParent);
     }
     let parent = parent.unwrap();
-    println!("parent {:?}", parent.data().option);
+    //println!("parent {:?}", parent.data().option);
 
     match parent.data().option {
         ParseOption::NOT() => {
@@ -185,7 +191,10 @@ fn is_unspecified(tree: &mut Tree<Parsed>, current_node_id: NodeId) -> Result<bo
     Ok(current.data().option == UNSPECIFIED())
 }
 
-fn is_unclosed_variable(tree: &mut Tree<Parsed>, current_node_id: NodeId) -> Result<bool, ParseError> {
+fn is_unclosed_variable(
+    tree: &mut Tree<Parsed>,
+    current_node_id: NodeId,
+) -> Result<bool, ParseError> {
     let current = tree.get(current_node_id);
     if current.is_none() {
         return Err(NoCurrent);

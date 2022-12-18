@@ -11,11 +11,10 @@ use std::{
 
 use lazy_static::lazy_static;
 use tauri::utils::resources::ResourcePaths;
-use LogikLib::aussagen::{self, structures::FormelKontext};
-use LogikLib::aussagen::{
-    parse_function,
-    structures::{AussagenFunktion, Wahrheitstabelle},
-};
+use logik_lib::aussagen::*;
+use logik_lib::aussagen::parse_function;
+use logik_lib::aussagen::structures::{AussagenFunktion, FormelKontext};
+
 struct MyState {
     kontext: FormelKontext,
 }
@@ -125,7 +124,7 @@ async fn get_wahrheitstabelle_cmd(
 
             Ok(format!(
                 "{}",
-                aussagen::get_wahrheitstabelle(&state.kontext, formeln)
+                get_wahrheitstabelle(&state.kontext, formeln)
             ))
         }
         Err(e) => {
@@ -163,7 +162,7 @@ async fn is_aequivalent(
                 }
             }
 
-            let tabelle = aussagen::get_wahrheitstabelle(&state.kontext, formeln);
+            let tabelle = get_wahrheitstabelle(&state.kontext, formeln);
             for ele in tabelle.belegungen {
                 for tupel in &ele.ergebnisse {
                     for tupel2 in &ele.ergebnisse {

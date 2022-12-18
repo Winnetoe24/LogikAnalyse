@@ -1,0 +1,9 @@
+SET AUSSAGEN phi1 (A & B)
+PRINT Formel-UTF phi1
+PRINT Formel-ASCII phi1
+TABELLE phi1
+PRINT Tabelle
+SET AUSSAGEN phi2 (A & C & D & U & I & (A | S | D | F | G | H | J | K | L | Ö | Ä))
+PRINT Formel-ASCII phi2
+TABELLE phi1 phi2
+PRINT Tabelle

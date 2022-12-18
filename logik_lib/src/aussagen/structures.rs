@@ -1,8 +1,5 @@
-
 use std::collections::{HashMap, HashSet};
 use std::fmt::{Display, Formatter};
-
-
 
 #[derive(Debug, PartialEq, Eq, Hash)]
 pub enum AussagenFunktion {
@@ -28,11 +25,10 @@ impl AussagenFunktion {
                     return kontext.funktionen.get(key).unwrap().get_keys(kontext);
                 }
                 HashSet::from([key])
-            },
+            }
             AussagenFunktion::TOP() | AussagenFunktion::BOTTOM() => HashSet::new(),
             AussagenFunktion::NOT(funktion) => funktion.get_keys(kontext),
-            AussagenFunktion::AND(funktion)
-            | AussagenFunktion::OR(funktion) => {
+            AussagenFunktion::AND(funktion) | AussagenFunktion::OR(funktion) => {
                 let mut set = HashSet::new();
                 for ele in funktion {
                     set.extend(&ele.get_keys(kontext));
@@ -42,20 +38,28 @@ impl AussagenFunktion {
         }
     }
 
-    pub fn result(&self, kontext: &FormelKontext, belegung: &HashMap<String, bool>, default: bool) -> bool {
+    pub fn result(
+        &self,
+        kontext: &FormelKontext,
+        belegung: &HashMap<String, bool>,
+        default: bool,
+    ) -> bool {
         match self {
             AussagenFunktion::VARIABEL(key) => {
                 if kontext.contains_funktion(key) {
-                    kontext.funktionen.get(key).unwrap().result(kontext, belegung, default)
-                }else{
+                    kontext
+                        .funktionen
+                        .get(key)
+                        .unwrap()
+                        .result(kontext, belegung, default)
+                } else {
                     *belegung.get(key).unwrap_or(&default)
                 }
-            },
+            }
             AussagenFunktion::TOP() => true,
             AussagenFunktion::BOTTOM() => false,
-            AussagenFunktion::NOT(funktion) => !funktion.result(kontext,belegung, default),
-            AussagenFunktion::AND(funktion) => 
-            {   
+            AussagenFunktion::NOT(funktion) => !funktion.result(kontext, belegung, default),
+            AussagenFunktion::AND(funktion) => {
                 let mut res = true;
                 for ele in funktion {
                     res &= ele.result(kontext, belegung, default);
@@ -78,34 +82,28 @@ impl AussagenFunktion {
             AussagenFunktion::TOP() => String::from("t"),
             AussagenFunktion::BOTTOM() => String::from("f"),
             AussagenFunktion::NOT(funktion) => format!("-{}", funktion.to_ascii_string()),
-            AussagenFunktion::AND(funktion) => format!(
-                "({})",
-                {
-                    let mut s = String::new();
-                    for ele in funktion {
-                        if s.is_empty() {
-                            s = ele.to_ascii_string();
-                        }else {
-                            s = format!("{} & {}", s, ele.to_ascii_string());
-                        }
+            AussagenFunktion::AND(funktion) => format!("({})", {
+                let mut s = String::new();
+                for ele in funktion {
+                    if s.is_empty() {
+                        s = ele.to_ascii_string();
+                    } else {
+                        s = format!("{} & {}", s, ele.to_ascii_string());
                     }
-                    s    
                 }
-            ),
-            AussagenFunktion::OR(funktion) =>format!(
-                "({})",
-                {
-                    let mut s = String::new();
-                    for ele in funktion {
-                        if s.is_empty() {
-                            s = ele.to_ascii_string();
-                        }else {
-                            s = format!("{} | {}", s, ele.to_ascii_string());
-                        }
+                s
+            }),
+            AussagenFunktion::OR(funktion) => format!("({})", {
+                let mut s = String::new();
+                for ele in funktion {
+                    if s.is_empty() {
+                        s = ele.to_ascii_string();
+                    } else {
+                        s = format!("{} | {}", s, ele.to_ascii_string());
                     }
-                    s    
                 }
-            ),
+                s
+            }),
         }
     }
     pub fn to_utf_string(&self) -> String {
@@ -114,34 +112,28 @@ impl AussagenFunktion {
             AussagenFunktion::TOP() => String::from("⊤"),
             AussagenFunktion::BOTTOM() => String::from("⊥"),
             AussagenFunktion::NOT(funktion) => format!("¬{}", funktion.to_utf_string()),
-            AussagenFunktion::AND(funktion) => format!(
-                "({})",
-                {
-                    let mut s = String::new();
-                    for ele in funktion {
-                        if s.is_empty() {
-                            s = ele.to_utf_string();
-                        }else {
-                            s = format!("{} ⋀ {}", s, ele.to_utf_string());
-                        }
+            AussagenFunktion::AND(funktion) => format!("({})", {
+                let mut s = String::new();
+                for ele in funktion {
+                    if s.is_empty() {
+                        s = ele.to_utf_string();
+                    } else {
+                        s = format!("{} ⋀ {}", s, ele.to_utf_string());
                     }
-                    s    
                 }
-            ),
-            AussagenFunktion::OR(funktion) =>format!(
-                "({})",
-                {
-                    let mut s = String::new();
-                    for ele in funktion {
-                        if s.is_empty() {
-                            s = ele.to_utf_string();
-                        }else {
-                            s = format!("{} ⋁ {}", s, ele.to_utf_string());
-                        }
+                s
+            }),
+            AussagenFunktion::OR(funktion) => format!("({})", {
+                let mut s = String::new();
+                for ele in funktion {
+                    if s.is_empty() {
+                        s = ele.to_utf_string();
+                    } else {
+                        s = format!("{} ⋁ {}", s, ele.to_utf_string());
                     }
-                    s    
                 }
-            ),
+                s
+            }),
         }
     }
 }
@@ -163,6 +155,7 @@ impl Clone for AussagenFunktion {
 pub struct FormelKontext {
     pub funktionen: HashMap<String, AussagenFunktion>,
     pub belegung: Vec<Belegung>,
+    pub tabelle: Option<Wahrheitstabelle>,
 }
 
 impl FormelKontext {
@@ -171,12 +164,18 @@ impl FormelKontext {
     }
 
     pub fn new() -> FormelKontext {
-        FormelKontext { funktionen: HashMap::new(), belegung: Vec::new() }
+        FormelKontext {
+            funktionen: HashMap::new(),
+            belegung: Vec::new(),
+            tabelle: None,
+        }
     }
 
     pub fn get_key(&self, value: &AussagenFunktion) -> Option<String> {
         for ele in &self.funktionen {
-            if ele.1.eq(value) {return Some(ele.0.clone());}
+            if ele.1.eq(value) {
+                return Some(ele.0.clone());
+            }
         }
         None
     }
@@ -184,7 +183,7 @@ impl FormelKontext {
     pub fn get_keys(&self, formeln: &Vec<&AussagenFunktion>) -> Vec<String> {
         let mut v = Vec::new();
         for ele in &self.funktionen {
-            if formeln.contains(&ele.1)  {
+            if formeln.contains(&ele.1) {
                 v.push(ele.0.clone());
             }
         }
@@ -210,7 +209,6 @@ impl Wahrheitstabelle {
             self.belegungen.push(belegung);
         }
     }
-
 }
 
 impl Display for Wahrheitstabelle {
@@ -225,7 +223,7 @@ impl Display for Wahrheitstabelle {
             write!(f, "  {}  |", ele.0)?;
         }
 
-        let mut pattern_map:HashMap<String, String> = HashMap::new();
+        let mut pattern_map: HashMap<String, String> = HashMap::new();
         for ele in &self.reihenfolge {
             write!(f, " {} |", ele)?;
             let len = ele.len();
@@ -244,9 +242,8 @@ impl Display for Wahrheitstabelle {
         }
         writeln!(f, "")?;
 
-
         let def = String::from(" {} |");
-        
+
         for ele in &self.belegungen {
             for ele in &ele.werte {
                 if *ele.1 {
@@ -261,16 +258,17 @@ impl Display for Wahrheitstabelle {
                 let filled_pattern;
                 let get = (&ele.ergebnisse).get(erg);
                 if get.is_none() {
-                    return Err(std::fmt::Error{});
-                }else {
-                if *get.unwrap() {
-                    filled_pattern = pattern.replace("{}", "1");
-                }else {
-                    filled_pattern = pattern.replace("{}", "0");
-                }}
+                    return Err(std::fmt::Error {});
+                } else {
+                    if *get.unwrap() {
+                        filled_pattern = pattern.replace("{}", "1");
+                    } else {
+                        filled_pattern = pattern.replace("{}", "0");
+                    }
+                }
                 write!(f, "{}", filled_pattern)?;
             }
-            writeln!(f,"")?;
+            writeln!(f, "")?;
         }
 
         Ok(())
