@@ -3,6 +3,9 @@ name = "logik_lib"
 version = "0.1.0"
 edition = "2021"
 
+[target.aarch64-apple-darwin]
+linker = "rust-lld"
+
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]

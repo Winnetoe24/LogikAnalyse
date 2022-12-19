@@ -1,0 +1,4 @@
+SET AUSSAGEN phi1 (-A & -B)
+SET AUSSAGEN phi2 -(A | B)
+PRINT BELEGUNG phi1 phi2 | A
+PRINT AEQUIVALENZ phi1 phi2

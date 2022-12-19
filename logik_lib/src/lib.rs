@@ -1,3 +1,5 @@
+extern crate core;
+
 pub mod aussagen;
 pub mod script;
 
@@ -12,8 +14,9 @@ mod tests {
 
     use crate::aussagen::structures::AussagenFunktion::{self, *};
     use crate::aussagen::structures::FormelKontext;
-    use crate::aussagen::ParseOption::VARIABLE;
-    use crate::aussagen::{get_wahrheitstabelle, parse_function, ParseOption, Parsed};
+    use crate::aussagen::parsing::ParseOption::VARIABLE;
+    use crate::aussagen::get_wahrheitstabelle;
+    use crate::aussagen::parsing::{parse_function, Parsed, ParseOption};
 
     use super::*;
 

@@ -4,10 +4,27 @@ use std::str::SplitWhitespace;
 
 use derive_more::Display;
 
-use crate::aussagen::{structures::FormelKontext, ParseError};
+use crate::aussagen::structures::FormelKontext;
+use crate::aussagen::parsing::ParseError;
 use crate::script::print::print;
 use crate::script::set::set;
 use crate::script::tabelle::tabelle;
+
+
+
+#[derive(Debug, Display)]
+pub enum ScriptAction {
+    #[display(fmt = "Funktion Gesetzt: {}", name)]
+    ParseFunction {
+        name: String,
+    },
+    #[display(fmt = "{}", ausgabe)]
+    Print {
+        ausgabe: String,
+    },
+    #[display(fmt = "Tabelle generiert")]
+    GenerateTabelle(),
+}
 
 #[derive(Debug)]
 pub enum ScriptError {
@@ -18,20 +35,6 @@ pub enum ScriptError {
         string: String
     },
     FunktionNotFound(String),
-}
-
-#[derive(Debug, Display)]
-pub enum ScriptAction {
-    #[display(fmt = "Fuktion Gesetzt: {}", name)]
-    ParseFunction {
-        name: String,
-    },
-    #[display(fmt = "{}", ausgabe)]
-    Print {
-        ausgabe: String,
-    },
-    GenerateTabelle(),
-
 }
 
 impl ScriptError {
@@ -64,9 +67,9 @@ pub fn parse_line(line: &str, kontext: &mut FormelKontext) -> Result<ScriptActio
         return Err(ScriptError::WrongSyntax(String::from(line)));
     }
     let result: Result<ScriptAction, ScriptError> = match next.unwrap() {
-        "SET" => set(iterator, kontext),
-        "PRINT" => print(iterator, kontext),
-        "TABELLE" => tabelle(iterator,kontext),
+        "set" | "SET" => set(iterator, kontext),
+        "print" | "PRINT" => print(iterator, kontext),
+        "tabelle" | "TABELLE" => tabelle(iterator,kontext),
         s => Err(ScriptError::FunctionTypeNotImplemented(String::from(s))),
     };
 
@@ -94,12 +97,12 @@ fn get_rest(iterator: &mut SplitWhitespace) -> Result<String, ScriptError> {
     if next.is_none() {
         return Err(ScriptError::WrongSyntax(String::new()));
     }
-    let mut formel = String::from(next.unwrap());
+    let mut rest = String::from(next.unwrap());
 
     for ele in iterator {
-        formel.push_str(ele);
+        rest.push_str(ele);
     }
-    Ok(formel)
+    Ok(rest)
 }
 
 mod set {
@@ -138,7 +141,7 @@ mod set {
 
         let formel = get_rest(&mut iterator)?;
 
-        match crate::aussagen::parse_function(formel.as_str()) {
+        match crate::aussagen::parsing::parse_function(formel.as_str()) {
             Ok(formel) => {
                 kontext.funktionen.insert(String::from(name), *formel);
                 Ok(ScriptAction::ParseFunction {
@@ -156,11 +159,13 @@ mod set {
 }
 
 mod print {
+    use std::collections::HashMap;
     use std::str::SplitWhitespace;
+    use crate::aussagen::{get_belegung, is_aequivalent};
 
     use crate::aussagen::structures::FormelKontext;
     use crate::script::ScriptAction::Print;
-    use crate::script::ScriptError::TabelleNotGenerated;
+    use crate::script::ScriptError::{FunktionNotFound, TabelleNotGenerated};
 
     use super::{ScriptAction, ScriptError};
 
@@ -176,6 +181,8 @@ mod print {
             "Formel-UTF" => print_formel_utf(iterator, kontext),
             "Formel-ASCII" => print_formel_ascii(iterator, kontext),
             "Tabelle" => print_tabelle(kontext),
+            "Belegung" | "BELEGUNG" => print_belegung(iterator, kontext),
+            "aequivalenz" | "AEQUIVALENZ" => print_aequivalenz(iterator,kontext),
             _ => return Err(ScriptError::WrongSyntax(String::new())),
         }
     }
@@ -231,6 +238,49 @@ mod print {
         let string = format!("{}", &kontext.tabelle.as_ref().unwrap());
         Ok(Print {ausgabe: string})
     }
+
+    fn print_belegung(mut iterator: SplitWhitespace,
+                      kontext: &mut FormelKontext,) -> Result<ScriptAction, ScriptError> {
+
+        let  mut vec = Vec::new();
+        let mut next = iterator.next();
+        while next.is_some() {
+            let name = next.unwrap();
+            match name {
+                "|" => break,
+                name => {
+                    let option = kontext.funktionen.get(&*String::from(name));
+                    if  option.is_none() {
+                        return Err(FunktionNotFound(String::from(name)))
+                    }
+                    vec.push(option.unwrap());
+                }
+            }
+            next = iterator.next();
+        }
+
+        let mut werte = HashMap::new();
+        for name in iterator {
+            werte.insert(String::from(name), true);
+        }
+
+        let belegung = get_belegung(kontext, &vec, &werte);
+
+        Ok(Print {ausgabe: format!("{}", belegung)})
+    }
+
+   fn print_aequivalenz(mut iterator: SplitWhitespace,
+                                   kontext: &mut FormelKontext,) -> Result<ScriptAction, ScriptError> {
+        let  mut vec = Vec::new();
+        for name in iterator {
+            let option = kontext.funktionen.get(&*String::from(name));
+            if  option.is_none() {
+                return Err(FunktionNotFound(String::from(name)))
+            }
+            vec.push(option.unwrap());
+        }
+        Ok(Print {ausgabe: format!("{}",  is_aequivalent(kontext, vec))})
+    }
 }
 
 mod tabelle {
@@ -244,10 +294,9 @@ mod tabelle {
     use crate::script::ScriptError::FunktionNotFound;
 
     pub(super) fn tabelle(
-        mut iterator: SplitWhitespace,
+        iterator: SplitWhitespace,
         kontext: &mut FormelKontext,
     ) -> Result<ScriptAction, ScriptError> {
-        //todo nur die ausgewählten Formeln (nächste para) nehmen
         let  mut vec = Vec::new();
         for name in iterator {
             let option = kontext.funktionen.get(&*String::from(name));

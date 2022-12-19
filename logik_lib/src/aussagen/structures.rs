@@ -197,6 +197,21 @@ pub struct Belegung {
     pub ergebnisse: HashMap<String, bool>,
 }
 
+impl Display for Belegung {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        let mut new_line = false;
+        for tupel in &self.ergebnisse {
+            if new_line {
+                writeln!(f,"")?;
+            }
+            write!(f,"{} = {}",tupel.0, tupel.1)?;
+            new_line = true;
+        }
+
+        Ok(())
+    }
+}
+
 #[derive(Debug)]
 pub struct Wahrheitstabelle {
     pub belegungen: Vec<Belegung>,

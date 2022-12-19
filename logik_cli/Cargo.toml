@@ -3,8 +3,12 @@ name = "logik_cli"
 version = "0.1.0"
 edition = "2021"
 
+[target.aarch64-apple-darwin]
+rustflags = ["-C", "linker-flavor=ld.lld"]
+
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
 clap = { version = "4.0.18", features = ["derive"]}
 logik_lib = {path = "../logik_lib" }
+termimad = "0.20.6"
