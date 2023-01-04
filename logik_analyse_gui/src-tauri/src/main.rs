@@ -12,7 +12,7 @@ use std::{
 use lazy_static::lazy_static;
 use tauri::utils::resources::ResourcePaths;
 use logik_lib::aussagen::*;
-use logik_lib::aussagen::parse_function;
+use logik_lib::aussagen::parsing::parse_function;
 use logik_lib::aussagen::structures::{AussagenFunktion, FormelKontext};
 
 struct MyState {
